@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if post %}Edit Post{% else %}Submit Post{% endif %} - Yale Newcomer Survival Guide{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card shadow">
+            <div class="card-body p-4">
+                <h2 class="card-title mb-4">
+                    <i class="bi bi-pencil"></i> {% if post %}Edit Post{% else %}Submit New Post{% endif %}
+                </h2>
+
+                {% if form.errors %}
+                    <div class="alert alert-danger">
+                        <strong>Please correct the errors below:</strong>
+                        <ul class="mb-0 mt-2">
+                            {% for field, errors in form.errors.items %}
+                                {% for error in errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="id_title" class="form-label">Title <span class="text-danger">*</span></label>
+                        {{ form.title }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="id_slug" class="form-label">URL Slug <span class="text-danger">*</span></label>
+                        {{ form.slug }}
+                        <small class="form-text text-muted">URL-friendly version of the title (e.g., "finding-housing")</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="id_category" class="form-label">Category <span class="text-danger">*</span></label>
+                        {{ form.category }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="id_content" class="form-label">Content <span class="text-danger">*</span></label>
+                        {{ form.content }}
+                        <small class="form-text text-muted">You can use Markdown formatting</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="id_status" class="form-label">Status</label>
+                        {{ form.status }}
+                        <small class="form-text text-muted">
+                            {% if not user.is_staff %}
+                                Choose "Pending Review" to submit for approval, or "Draft" to save for later.
+                            {% else %}
+                                As admin, you can set any status.
+                            {% endif %}
+                        </small>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'core:home' %}" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> {% if post %}Update Post{% else %}Submit Post{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

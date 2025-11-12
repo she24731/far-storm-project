@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ category.name }} - Yale Newcomer Survival Guide{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'core:home' %}">Home</a></li>
+        <li class="breadcrumb-item active">{{ category.name }}</li>
+    </ol>
+</nav>
+
+<div class="row mb-4">
+    <div class="col">
+        <h1>{{ category.name }}</h1>
+        {% if category.description %}
+            <p class="text-muted lead">{{ category.description }}</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <h3 class="mb-3">Posts</h3>
+        {% if posts %}
+            <div class="list-group">
+                {% for post in posts %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <h5 class="mb-1">
+                                    <a href="{% url 'core:post_detail' post.slug %}" class="text-decoration-none">
+                                        {{ post.title }}
+                                    </a>
+                                </h5>
+                                <small class="text-muted">
+                                    <i class="bi bi-person"></i> {{ post.author.username }}
+                                    <span class="ms-3"><i class="bi bi-clock"></i> {{ post.updated_at|date:"M d, Y" }}</span>
+                                </small>
+                            </div>
+                            {% if post.status != 'approved' %}
+                                <span class="badge bg-warning text-dark ms-3">{{ post.get_status_display }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info">No posts available in this category yet.</div>
+        {% endif %}
+    </div>
+    
+    {% if external_links %}
+        <div class="col-md-4">
+            <h3 class="mb-3">External Resources</h3>
+            <div class="list-group">
+                {% for link in external_links %}
+                    <a href="{{ link.url }}" target="_blank" rel="noopener noreferrer" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ link.title }}</h6>
+                            <i class="bi bi-box-arrow-up-right"></i>
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+

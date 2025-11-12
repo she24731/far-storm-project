@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Yale Newcomer Survival Guide{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="row mb-5">
+    <div class="col">
+        <div class="jumbotron bg-primary text-white p-5 rounded">
+            <h1 class="display-4">
+                <i class="bi bi-compass"></i> Welcome to the Yale Newcomer Survival Guide
+            </h1>
+            <p class="lead">
+                Your one-stop resource for navigating life in New Haven. Find curated, student-vetted guidance on housing, food, transportation, academics, and more.
+            </p>
+            <hr class="my-4" style="border-color: rgba(255,255,255,0.3);">
+            <p>Browse by category below or use the search function to find what you need.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Categories Grid -->
+<div class="row mb-4">
+    <div class="col">
+        <h2 class="mb-4"><i class="bi bi-grid"></i> Browse Categories</h2>
+    </div>
+</div>
+
+<div class="row g-4">
+    {% for category in categories %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        {% if category.icon %}
+                            <i class="bi bi-{{ category.icon }} fs-2 text-primary me-3"></i>
+                        {% else %}
+                            <i class="bi bi-folder fs-2 text-primary me-3"></i>
+                        {% endif %}
+                        <h3 class="card-title mb-0">{{ category.name }}</h3>
+                    </div>
+                    {% if category.description %}
+                        <p class="card-text text-muted">{{ category.description|truncatewords:20 }}</p>
+                    {% endif %}
+                    <a href="{% url 'guide:category_detail' category.slug %}" class="btn btn-primary">
+                        View Posts <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> No categories available yet. Check back soon!
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
