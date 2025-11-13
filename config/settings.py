@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'whitenoise.runserver_nostatic',
-    'core',
+    'core.apps.CoreConfig',  # Use explicit AppConfig to enable startup hooks
 ]
 
 MIDDLEWARE = [
