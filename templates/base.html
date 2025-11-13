@@ -23,6 +23,7 @@
                         <a class="nav-link" href="{% url 'core:home' %}">Home</a>
                     </li>
                     {% if user.is_authenticated %}
+                        {# TODO: restrict this to 'Contributors' group - currently checks user.groups.filter(name='Contributor').exists() #}
                         {% for group in user.groups.all %}
                             {% if group.name == 'Contributor' %}
                                 <li class="nav-item">
@@ -43,22 +44,32 @@
                 </ul>
                 <ul class="navbar-nav">
                     {% if user.is_authenticated %}
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                                <i class="bi bi-person-circle"></i> {{ user.username }}
+                        <li class="nav-item">
+                            <span class="nav-link">
+                                <i class="bi bi-person-circle"></i> Hello, {{ user.username }}
+                            </span>
+                        </li>
+                        {% if user.is_staff %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="/admin/">
+                                    <i class="bi bi-gear"></i> Admin
+                                </a>
+                            </li>
+                        {% endif %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'core:logout' %}">
+                                <i class="bi bi-box-arrow-right"></i> Logout
                             </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                {% if user.is_staff %}
-                                    <li><a class="dropdown-item" href="/admin/"><i class="bi bi-gear"></i> Admin Panel</a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                {% endif %}
-                                <li><a class="dropdown-item" href="{% url 'core:logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
-                            </ul>
                         </li>
                     {% else %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'core:login' %}">
                                 <i class="bi bi-box-arrow-in-right"></i> Login
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'core:signup' %}">
+                                <i class="bi bi-person-plus"></i> Sign Up
                             </a>
                         </li>
                     {% endif %}

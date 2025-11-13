@@ -21,17 +21,16 @@ SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-dev-key-change
 DEBUG = config('DEBUG', default=True, cast=bool)
 
 # ALLOWED_HOSTS: Support local development and Render production
-# Always include localhost and 127.0.0.1 for local development
 ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
+    '127.0.0.1',
+    'localhost',
+    'yale-newcomer-survival-guide.onrender.com',
 ]
 
 # Render automatically provides RENDER_EXTERNAL_HOSTNAME environment variable
-# This contains your Render service URL (e.g., "yale-newcomer-survival-guide.onrender.com")
-# If running on Render, this will automatically be added to ALLOWED_HOSTS
+# This is a fallback in case the environment variable is set (adds it if not already in list)
 RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
-if RENDER_EXTERNAL_HOSTNAME:
+if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 # ============================================================================
@@ -139,9 +138,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # AUTHENTICATION & LOGIN
 # ============================================================================
 
-LOGIN_URL = 'core:login'
-LOGIN_REDIRECT_URL = 'core:home'
-LOGOUT_REDIRECT_URL = 'core:home'
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/'
 
 # User role groups
 READER_GROUP = 'Reader'

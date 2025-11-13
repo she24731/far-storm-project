@@ -25,6 +25,7 @@ urlpatterns = [
     path('dashboard/reject/<int:post_id>/', views.reject_post, name='reject_post'),
     
     # Authentication
+    path('signup/', views.signup, name='signup'),
     path('login/', views.CustomLoginView.as_view(), name='login'),
     path('logout/', views.CustomLogoutView.as_view(), name='logout'),
 ]

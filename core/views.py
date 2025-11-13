@@ -14,7 +14,7 @@ from django.db.models import Q
 from django.utils import timezone
 from django.http import JsonResponse
 from .models import Category, Post, Bookmark, ExternalLink
-from .forms import PostForm
+from .forms import PostForm, UserRegistrationForm
 from config.settings import READER_GROUP, CONTRIBUTOR_GROUP, ADMIN_GROUP
 
 
@@ -117,6 +117,9 @@ def submit_post(request, post_id=None):
     
     URL: /submit/ or /submit/<post_id>/
     Contributors can create drafts or submit for review (pending).
+    
+    TODO: Currently restricted to 'Contributors' group via @user_passes_test(is_contributor).
+    The is_contributor function checks user.groups.filter(name='Contributors').exists().
     """
     post = None
     if post_id:
@@ -192,7 +195,45 @@ def reject_post(request, post_id):
     return redirect('core:dashboard')
 
 
-# Authentication views
+# ============================================================================
+# AUTHENTICATION VIEWS
+# ============================================================================
+
+def signup(request):
+    """
+    User registration view.
+    
+    Creates a new user account and automatically logs them in.
+    New users are assigned to the Reader group by default.
+    """
+    if request.user.is_authenticated:
+        # Redirect authenticated users away from signup page
+        return redirect('core:home')
+    
+    if request.method == 'POST':
+        form = UserRegistrationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            
+            # Assign user to Reader group by default
+            try:
+                reader_group = Group.objects.get(name=READER_GROUP)
+                user.groups.add(reader_group)
+            except Group.DoesNotExist:
+                # If Reader group doesn't exist, create it
+                reader_group = Group.objects.create(name=READER_GROUP)
+                user.groups.add(reader_group)
+            
+            # Automatically log the user in after registration
+            login(request, user)
+            messages.success(request, f'Welcome, {user.username}! Your account has been created successfully.')
+            return redirect('core:home')
+    else:
+        form = UserRegistrationForm()
+    
+    return render(request, 'registration/signup.html', {'form': form})
+
+
 class CustomLoginView(LoginView):
     """Custom login view."""
     template_name = 'registration/login.html'
@@ -210,6 +251,8 @@ class CustomLoginView(LoginView):
 
 class CustomLogoutView(LogoutView):
     """Custom logout view."""
+    template_name = 'registration/logged_out.html'
+    
     def dispatch(self, request, *args, **kwargs):
         messages.success(request, 'You have been successfully logged out.')
         return super().dispatch(request, *args, **kwargs)
