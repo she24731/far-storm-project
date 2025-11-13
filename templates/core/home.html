@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Yale Newcomer Survival Guide{% endblock %}
+
+{% block content %}
+<div class="row mb-5">
+    <div class="col">
+        <h1 class="display-4">
+            <i class="bi bi-compass"></i> Welcome to the Yale Newcomer Survival Guide
+        </h1>
+        <p class="lead">Your one-stop resource for navigating life in New Haven.</p>
+    </div>
+</div>
+
+<!-- Search Bar -->
+<div class="row mb-4">
+    <div class="col-md-8 mx-auto">
+        <form method="get" action="{% url 'core:home' %}">
+            <div class="input-group input-group-lg">
+                <input type="text" class="form-control" name="q" value="{{ query }}" placeholder="Search posts...">
+                <button class="btn btn-primary" type="submit">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Categories -->
+<div class="row mb-5">
+    <div class="col">
+        <h2 class="mb-4"><i class="bi bi-grid"></i> Browse Categories</h2>
+        <div class="row g-4">
+            {% for category in categories %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h3 class="card-title">{{ category.name }}</h3>
+                            {% if category.description %}
+                                <p class="card-text text-muted">{{ category.description|truncatewords:20 }}</p>
+                            {% endif %}
+                            <a href="{% url 'core:category_list' category.slug %}" class="btn btn-primary">
+                                View Posts <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="col-12">
+                    <div class="alert alert-info">No categories available yet.</div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Latest Posts -->
+<div class="row">
+    <div class="col">
+        <h2 class="mb-4"><i class="bi bi-clock-history"></i> Latest Posts</h2>
+        {% if latest_posts %}
+            <div class="list-group">
+                {% for post in latest_posts %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <div>
+                                <h5 class="mb-1">
+                                    <a href="{% url 'core:post_detail' post.slug %}" class="text-decoration-none">
+                                        {{ post.title }}
+                                    </a>
+                                </h5>
+                                <small class="text-muted">
+                                    <span class="badge bg-primary">{{ post.category.name }}</span>
+                                    <span class="ms-2"><i class="bi bi-person"></i> {{ post.author.username }}</span>
+                                    <span class="ms-2"><i class="bi bi-clock"></i> {{ post.updated_at|date:"M d, Y" }}</span>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info">No posts available yet.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

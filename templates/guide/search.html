@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Search - Yale Newcomer Survival Guide{% endblock %}
+
+{% block content %}
+<!-- Search Header -->
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="bi bi-search"></i> Search</h1>
+    </div>
+</div>
+
+<!-- Search Form -->
+<div class="row mb-4">
+    <div class="col-md-8 mx-auto">
+        <form method="get" action="{% url 'guide:search' %}">
+            <div class="input-group input-group-lg">
+                <input type="text" class="form-control" name="q" value="{{ query }}" placeholder="Search posts and categories...">
+                <button class="btn btn-primary" type="submit">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Search Results -->
+{% if query %}
+    <div class="row">
+        <!-- Posts Results -->
+        <div class="col-md-8">
+            <h3 class="mb-3">Posts ({{ results.posts|length }})</h3>
+            {% if results.posts %}
+                <div class="list-group">
+                    {% for post in results.posts %}
+                        <div class="list-group-item">
+                            <h5 class="mb-1">
+                                <a href="{% url 'guide:post_detail' post.slug %}" class="text-decoration-none">
+                                    {{ post.title }}
+                                </a>
+                            </h5>
+                            <p class="mb-1 text-muted">{{ post.summary|default:post.content|truncatewords:30 }}</p>
+                            <small class="text-muted">
+                                <span class="badge bg-primary">{{ post.category.name }}</span>
+                                <span class="ms-2"><i class="bi bi-person"></i> {{ post.author.username }}</span>
+                            </small>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> No posts found matching "{{ query }}".
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Categories Results -->
+        <div class="col-md-4">
+            <h3 class="mb-3">Categories ({{ results.categories|length }})</h3>
+            {% if results.categories %}
+                <div class="list-group">
+                    {% for category in results.categories %}
+                        <a href="{% url 'guide:category_detail' category.slug %}" class="list-group-item list-group-item-action">
+                            {% if category.icon %}
+                                <i class="bi bi-{{ category.icon }}"></i>
+                            {% endif %}
+                            {{ category.name }}
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> No categories found.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Enter a search term above to find posts and categories.
+    </div>
+{% endif %}
+{% endblock %}
+

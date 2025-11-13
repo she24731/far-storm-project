@@ -1,0 +1,40 @@
+# Render deployment configuration for Yale Newcomer Survival Guide
+# This file defines a web service that will auto-deploy from GitHub
+
+services:
+  - type: web
+    name: yale-newcomer-survival-guide
+    env: python
+    # Build command: Install dependencies, collect static files, run migrations
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+    # Start command: Run gunicorn with config.wsgi application
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+    # Health check path
+    healthCheckPath: /admin/login/
+    # Auto-deploy from main branch
+    autoDeploy: true
+    # Environment variables (set these in Render dashboard)
+    envVars:
+      # Django secret key - MUST be set in Render dashboard
+      # Generate a secure key: python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+      - key: DJANGO_SECRET_KEY
+        sync: false  # You must set this manually in Render dashboard
+      # Debug mode - set to False for production
+      - key: DEBUG
+        value: "False"
+      # Allowed hosts - MUST include your Render URL (e.g., yale-newcomer-survival-guide.onrender.com)
+      # Set this in Render dashboard after deployment to include your service URL
+      - key: ALLOWED_HOSTS
+        sync: false  # You must set this manually in Render dashboard
+
+# Notes for deployment:
+# 1. After connecting GitHub repo, Render will auto-detect this render.yaml
+# 2. You MUST set these environment variables in Render dashboard:
+#    - DJANGO_SECRET_KEY: Generate a secure key (see command above)
+#    - ALLOWED_HOSTS: Add your Render URL (e.g., "yale-newcomer-survival-guide.onrender.com")
+# 3. The build command will automatically:
+#    - Install all dependencies from requirements.txt
+#    - Collect static files (WhiteNoise will serve them)
+#    - Run database migrations
+# 4. The start command uses gunicorn to serve the Django app
+# 5. SQLite database will be created in the /opt/render/project/src/db/ directory

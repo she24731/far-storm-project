@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ post.title }} - Yale Newcomer Survival Guide{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb Navigation -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'guide:home' %}">Home</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'guide:category_detail' post.category.slug %}">{{ post.category.name }}</a></li>
+        <li class="breadcrumb-item active">{{ post.title|truncatewords:5 }}</li>
+    </ol>
+</nav>
+
+<!-- Post Content -->
+<article class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+                <h1 class="card-title">{{ post.title }}</h1>
+                <div class="text-muted mb-2">
+                    <span class="badge bg-primary">{{ post.category.name }}</span>
+                    {% if post.status != 'approved' %}
+                        <span class="badge bg-warning text-dark ms-2">{{ post.get_status_display }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% if user.is_authenticated %}
+                <form method="post" action="{% url 'guide:toggle_bookmark' post.slug %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-primary">
+                        {% if is_bookmarked %}
+                            <i class="bi bi-bookmark-fill"></i> Bookmarked
+                        {% else %}
+                            <i class="bi bi-bookmark"></i> Bookmark
+                        {% endif %}
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+
+        {% if post.image %}
+            <img src="{{ post.image.url }}" class="img-fluid rounded mb-4" alt="{{ post.title }}">
+        {% endif %}
+
+        <div class="post-content mb-4">
+            {{ post.content|linebreaks }}
+        </div>
+
+        <hr>
+
+        <div class="d-flex justify-content-between align-items-center text-muted">
+            <div>
+                <small>
+                    <i class="bi bi-person"></i> By {{ post.author.username }}
+                    {% if post.published_at %}
+                        <span class="ms-3"><i class="bi bi-calendar-check"></i> Published {{ post.published_at|date:"M d, Y" }}</span>
+                    {% endif %}
+                    <span class="ms-3"><i class="bi bi-clock-history"></i> Last updated {{ post.updated_at|date:"M d, Y" }}</span>
+                </small>
+            </div>
+        </div>
+    </div>
+</article>
+
+<!-- Navigation Buttons -->
+<div class="d-flex justify-content-between">
+    <a href="{% url 'guide:category_detail' post.category.slug %}" class="btn btn-outline-primary">
+        <i class="bi bi-arrow-left"></i> Back to {{ post.category.name }}
+    </a>
+    <a href="{% url 'guide:home' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-house"></i> Home
+    </a>
+</div>
+{% endblock %}
+

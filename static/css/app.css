@@ -1,0 +1,24 @@
+/* Custom styles for Yale Newcomer Survival Guide */
+
+/* Additional customizations can be added here */
+.post-content {
+    line-height: 1.8;
+}
+
+.post-content h1,
+.post-content h2,
+.post-content h3 {
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.post-content p {
+    margin-bottom: 1rem;
+}
+
+.post-content ul,
+.post-content ol {
+    margin-bottom: 1rem;
+    padding-left: 2rem;
+}
+
