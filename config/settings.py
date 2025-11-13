@@ -20,11 +20,16 @@ SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-dev-key-change
 # DEBUG: Read from environment variable, default True for local development
 DEBUG = config('DEBUG', default=True, cast=bool)
 
+# ALLOWED_HOSTS: Support local development and Render production
+# Always include localhost and 127.0.0.1 for local development
 ALLOWED_HOSTS = [
-    "127.0.0.1",
     "localhost",
+    "127.0.0.1",
 ]
 
+# Render automatically provides RENDER_EXTERNAL_HOSTNAME environment variable
+# This contains your Render service URL (e.g., "yale-newcomer-survival-guide.onrender.com")
+# If running on Render, this will automatically be added to ALLOWED_HOSTS
 RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
