@@ -10,56 +10,16 @@ A Django 5 web application that helps Yale newcomers find categorized tips and r
 - **Admin Dashboard**: Custom dashboard at `/dashboard/` for reviewing pending posts
 - **Contributor Submission**: Contributors can submit posts for review
 - **Search**: Simple keyword search on home page
-- **DuckDB Database**: File-backed database with SQLite fallback
 - **Bootstrap UI**: Modern, responsive interface
 
 ## Tech Stack
 
 - **Backend**: Django 5 (Python 3.11+)
-- **Database**: DuckDB (file-backed) with SQLite fallback
+- **Database**: SQLite (for MVP deployment)
 - **Frontend**: Django Templates + Bootstrap 5
 - **Static Files**: WhiteNoise
-- **Deployment**: Docker + Render
-
-## Project Structure
-
-```
-yale-newcomer-survival-guide/
-├── config/                 # Project configuration package
-│   ├── settings.py         # Django settings
-│   ├── urls.py            # Root URL configuration
-│   ├── wsgi.py            # WSGI application
-│   └── asgi.py            # ASGI application
-├── core/                   # Main application
-│   ├── models.py          # Category, Post, Bookmark, ExternalLink
-│   ├── views.py           # All views (home, category, post, submit, dashboard)
-│   ├── forms.py           # Post submission form
-│   ├── urls.py            # App URL patterns
-│   ├── admin.py           # Django admin configuration
-│   └── management/
-│       └── commands/
-│           ├── setup_groups.py  # Create user groups
-│           └── seed_data.py     # Seed initial data
-├── templates/             # HTML templates
-│   ├── base.html
-│   ├── core/
-│   │   ├── home.html
-│   │   ├── category_list.html
-│   │   ├── post_detail.html
-│   │   ├── submit_post.html
-│   │   └── dashboard.html
-│   └── registration/
-│       └── login.html
-├── static/                # Static files
-│   └── css/
-│       └── app.css
-├── app_data/              # Database files (created at runtime)
-├── manage.py
-├── requirements.txt
-├── Dockerfile
-├── render.yaml
-└── README.md
-```
+- **Production Server**: Gunicorn
+- **Deployment**: Render
 
 ## Local Development Setup
 
@@ -67,7 +27,6 @@ yale-newcomer-survival-guide/
 
 - Python 3.11+ (Django 5 requires Python 3.10+)
 - pip
-- (Optional) Docker for containerized deployment
 
 ### Step-by-Step Setup
 
@@ -101,7 +60,7 @@ yale-newcomer-survival-guide/
    ```bash
    python manage.py createsuperuser
    ```
-   Follow the prompts to create an admin user. **Important**: Ensure `is_staff=True` is set.
+   Follow the prompts. Example: username `admin`, password `admin19891217`
 
 7. **Run development server**:
    ```bash
@@ -121,11 +80,100 @@ After running `seed_data`, you can log in with:
 - **Admin**: username: `admin`, password: `admin123`
 - **Contributor**: username: `contributor`, password: `contributor123`
 
-## User Roles
+## Git & GitHub Setup
 
-- **Reader**: Can view approved posts, browse categories, and search
-- **Contributor**: Can submit and edit posts (draft → pending workflow)
-- **Admin**: Can approve/reject posts, access `/dashboard/` and `/admin/`
+### Push to GitHub
+
+1. **Create a new repository on GitHub**:
+   - Go to https://github.com/new
+   - Repository name: `yale-newcomer-survival-guide`
+   - **Do NOT** initialize with README, .gitignore, or license (we already have these)
+
+2. **Add remote and push** (run these commands):
+   ```bash
+   git remote add origin https://github.com/she24731/yale-newcomer-survival-guide.git
+   git branch -M main
+   git push -u origin main
+   ```
+
+   You will be prompted to authenticate. Use your GitHub credentials or a personal access token.
+
+## Render Deployment
+
+### Prerequisites
+
+- GitHub repository with the code pushed
+- Render account (sign up at https://render.com)
+
+### Step-by-Step Deployment
+
+1. **Create a new Web Service on Render**:
+   - Go to https://dashboard.render.com
+   - Click "New +" → "Web Service"
+   - Connect your GitHub account if not already connected
+   - Select the repository: `she24731/yale-newcomer-survival-guide`
+
+2. **Render will auto-detect `render.yaml`**:
+   - Render will automatically detect the `render.yaml` file in your repo
+   - It will use the build and start commands defined there
+
+3. **Set environment variables** in Render dashboard:
+   
+   **Required variables:**
+   
+   - `DJANGO_SECRET_KEY`: 
+     - Generate a secure key by running locally:
+       ```bash
+       python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+       ```
+     - Copy the output and paste it as the value
+   
+   - `ALLOWED_HOSTS`: 
+     - After Render creates your service, you'll get a URL like: `https://yale-newcomer-survival-guide.onrender.com`
+     - Set this to: `yale-newcomer-survival-guide.onrender.com` (or whatever your service name is)
+     - You can also add multiple hosts separated by commas if needed
+   
+   **Optional variables (already set in render.yaml):**
+   
+   - `DEBUG`: Already set to `False` in render.yaml (production mode)
+   - Other variables are handled automatically
+
+4. **Deploy**:
+   - Click "Create Web Service"
+   - Render will:
+     - Install dependencies from `requirements.txt`
+     - Collect static files (WhiteNoise)
+     - Run database migrations
+     - Start the app with Gunicorn
+
+5. **After first deployment, set up the database**:
+   - Go to Render dashboard → Your service → "Shell"
+   - Run these commands:
+     ```bash
+     python manage.py setup_groups
+     python manage.py seed_data
+     python manage.py createsuperuser
+     ```
+   - Follow prompts to create your admin user
+
+6. **Access your application**:
+   - Your app will be available at: `https://<your-service-name>.onrender.com`
+   - Admin panel: `https://<your-service-name>.onrender.com/admin/`
+   - Dashboard: `https://<your-service-name>.onrender.com/dashboard/`
+
+### Environment Variables Summary
+
+| Variable | Required | Description | Example Value |
+|----------|----------|-------------|---------------|
+| `DJANGO_SECRET_KEY` | Yes | Django secret key for security | (generated string) |
+| `ALLOWED_HOSTS` | Yes | Your Render service URL | `yale-newcomer-survival-guide.onrender.com` |
+| `DEBUG` | No | Debug mode (set in render.yaml) | `False` |
+
+### Important Notes
+
+- **SQLite Database**: The database file will be stored in the Render filesystem. Note that Render's filesystem is ephemeral, so data may be lost on redeployments. For production, consider using a persistent database service later.
+- **Static Files**: WhiteNoise serves static files automatically - no additional configuration needed.
+- **Auto-Deploy**: The `render.yaml` is configured to auto-deploy from the `main` branch.
 
 ## URLs
 
@@ -141,97 +189,13 @@ After running `seed_data`, you can log in with:
 - `/login/` - Login page
 - `/logout/` - Logout
 
-## Git & GitHub Setup
+## Management Commands
 
-### Initialize Git Repository
-
-1. **Initialize git** (if not already done):
-   ```bash
-   git init
-   ```
-
-2. **Add all files**:
-   ```bash
-   git add .
-   ```
-
-3. **Create initial commit**:
-   ```bash
-   git commit -m "Initial commit: Yale Newcomer Survival Guide MVP"
-   ```
-
-### Push to GitHub
-
-1. **Create a new repository on GitHub** (do not initialize with README, .gitignore, or license)
-
-2. **Add remote origin** (replace `<YOUR_USERNAME>` and `<REPO_NAME>`):
-   ```bash
-   git remote add origin https://github.com/<YOUR_USERNAME>/<REPO_NAME>.git
-   ```
-
-3. **Push to GitHub**:
-   ```bash
-   git branch -M main
-   git push -u origin main
-   ```
-
-**Note**: You will be prompted to authenticate. Use your GitHub credentials or a personal access token.
-
-## Render Deployment
-
-### Prerequisites
-
-- GitHub repository with the code
-- Render account
-
-### Step-by-Step Deployment
-
-1. **Create a new Web Service on Render**:
-   - Go to https://dashboard.render.com
-   - Click "New +" → "Web Service"
-   - Connect your GitHub repository
-   - Select the repository containing this project
-
-2. **Configure the service**:
-   - **Name**: `yale-newcomer-survival-guide` (or your preferred name)
-   - **Environment**: `Docker`
-   - Render will auto-detect the `Dockerfile`
-
-3. **Set environment variables** in Render dashboard:
-   - `DJANGO_SECRET_KEY`: Click "Generate" to auto-generate
-   - `DEBUG`: Set to `0` (False)
-   - `DUCKDB_PATH`: Set to `/var/data/yale_newcomer.duckdb`
-   - `ALLOWED_HOSTS`: Will be auto-set by Render (or set to your Render domain)
-
-4. **Add persistent disk**:
-   - In the Render dashboard, go to "Disks"
-   - Click "Add Disk"
-   - **Name**: `yale-guide-data`
-   - **Mount Path**: `/var/data`
-   - **Size**: 1 GB
-
-5. **Deploy**:
-   - Click "Create Web Service"
-   - Render will build and deploy your application
-
-6. **Run migrations** (after first deploy):
-   - Go to "Shell" in Render dashboard
-   - Run:
-     ```bash
-     python manage.py migrate
-     python manage.py setup_groups
-     python manage.py seed_data
-     python manage.py createsuperuser
-     ```
-
-7. **Access your application**:
-   - Your app will be available at: `https://<your-service-name>.onrender.com`
-   - Admin panel: `https://<your-service-name>.onrender.com/admin/`
-   - Dashboard: `https://<your-service-name>.onrender.com/dashboard/`
-
-### Health Check
-
-The health check is configured to use `/admin/login/` as the health check path in `render.yaml`.
+- `python manage.py setup_groups` - Create user groups
+- `python manage.py seed_data` - Seed initial data
+- `python manage.py migrate` - Run database migrations
+- `python manage.py createsuperuser` - Create admin user
+- `python manage.py collectstatic` - Collect static files (for production)
 
 ## Troubleshooting
 
@@ -244,51 +208,25 @@ If you cannot log in to `/admin/`:
    python manage.py createsuperuser
    ```
 
-2. **Check `is_staff` flag**:
-   - In Django shell: `python manage.py shell`
-   - Run:
-     ```python
-     from django.contrib.auth.models import User
-     user = User.objects.get(username='admin')
-     user.is_staff = True
-     user.is_superuser = True
-     user.save()
-     ```
+2. **Check `is_staff` flag** (in Django shell):
+   ```bash
+   python manage.py shell
+   ```
+   ```python
+   from django.contrib.auth.models import User
+   user = User.objects.get(username='admin')
+   user.is_staff = True
+   user.is_superuser = True
+   user.save()
+   ```
 
-3. **Check `ALLOWED_HOSTS`**:
-   - In production, ensure `ALLOWED_HOSTS` includes your domain
-   - In `settings.py`, it's configured via environment variable
+### Render Deployment Issues
 
-### Database Issues
-
-- If DuckDB backend is not available, the app will automatically fallback to SQLite
-- Database files are stored in `app_data/` directory (local) or `/var/data/` (Render)
-
-### Static Files
-
-- Static files are served via WhiteNoise in production
-- Run `python manage.py collectstatic` before deployment
-
-## Management Commands
-
-- `python manage.py setup_groups` - Create user groups
-- `python manage.py seed_data` - Seed initial data
-- `python manage.py migrate` - Run database migrations
-- `python manage.py createsuperuser` - Create admin user
-- `python manage.py collectstatic` - Collect static files
-
-## Development Workflow
-
-1. Make changes locally
-2. Test with `python manage.py runserver`
-3. Commit changes: `git add . && git commit -m "Description"`
-4. Push to GitHub: `git push origin main`
-5. Render will auto-deploy (if auto-deploy is enabled)
+- **Build fails**: Check that all dependencies are in `requirements.txt`
+- **Static files not loading**: Ensure `collectstatic` runs in build command (already in render.yaml)
+- **Database errors**: Run migrations in Render Shell after first deploy
+- **500 errors**: Check Render logs and ensure `ALLOWED_HOSTS` includes your Render URL
 
 ## License
 
 This project is for educational purposes as part of the Management of Software Development course at Yale.
-
-## Contact
-
-For issues or questions, contact: chun-hung.yeh@yale.edu

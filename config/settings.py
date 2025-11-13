@@ -16,7 +16,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ============================================================================
 
 SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-dev-key-change-in-production-12345')
+
+# DEBUG: Read from environment variable, default True for local development
 DEBUG = config('DEBUG', default=True, cast=bool)
+
+# ALLOWED_HOSTS: Read from environment variable, default includes localhost for dev
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',')])
 
 # ============================================================================
@@ -66,35 +70,20 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # ============================================================================
-# DATABASE CONFIGURATION - DuckDB with SQLite fallback
+# DATABASE CONFIGURATION - SQLite (DuckDB optional for later analytics)
 # ============================================================================
 
-# DuckDB database path - default to app_data/ directory
-DUCKDB_PATH = config('DUCKDB_PATH', default=str(BASE_DIR / 'app_data' / 'yale_newcomer.duckdb'))
-
-# Ensure app_data directory exists
-os.makedirs(os.path.dirname(DUCKDB_PATH), exist_ok=True)
-
-# Try to use django-duckdb, fallback to SQLite if unavailable
-try:
-    import duckdb_backend
-    DATABASES = {
-        'default': {
-            'ENGINE': 'duckdb_backend',
-            'NAME': DUCKDB_PATH,
-            'OPTIONS': {
-                'threads': 1,  # Serialize writes for DuckDB
-            }
-        }
+# Use SQLite for MVP deployment
+# DuckDB can be added later for analytics, but not replacing Django DB
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db' / 'db.sqlite3',
     }
-except ImportError:
-    # Fallback to SQLite
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'app_data' / 'db.sqlite3',
-        }
-    }
+}
+
+# Ensure db directory exists
+os.makedirs(BASE_DIR / 'db', exist_ok=True)
 
 # ============================================================================
 # PASSWORD VALIDATION

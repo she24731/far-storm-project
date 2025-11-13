@@ -24,13 +24,12 @@
                     </li>
                     {% if user.is_authenticated %}
                         {% for group in user.groups.all %}
-                            {% if group.name == 'Contributor' or user.is_staff %}
+                            {% if group.name == 'Contributor' %}
                                 <li class="nav-item">
                                     <a class="nav-link" href="{% url 'core:submit_post' %}">
                                         <i class="bi bi-pencil"></i> Submit Post
                                     </a>
                                 </li>
-                                {% break %}
                             {% endif %}
                         {% endfor %}
                         {% if user.is_staff %}

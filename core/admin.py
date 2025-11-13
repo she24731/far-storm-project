@@ -3,54 +3,40 @@ Django admin configuration for core app.
 """
 
 from django.contrib import admin
-from django.contrib.admin import site
 from .models import Category, Post, Bookmark, ExternalLink
-
-# Customize admin site
-site.site_header = "Yale Newcomer Survival Guide Admin"
-site.site_title = "Yale Guide Admin"
-site.index_title = "Welcome to the Administration Panel"
-
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ['name', 'slug', 'created_at']
-    prepopulated_fields = {'slug': ('name',)}
-    search_fields = ['name', 'description']
-
+    list_display = ("name", "slug")     # keep simple; no created_at assumed
+    search_fields = ("name",)
+    prepopulated_fields = {"slug": ("name",)}
 
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
-    list_display = ['title', 'category', 'author', 'status', 'created_at', 'updated_at']
-    list_filter = ['status', 'category', 'created_at']
-    search_fields = ['title', 'content']
-    prepopulated_fields = {'slug': ('title',)}
-    readonly_fields = ['created_at', 'updated_at', 'published_at']
-    
-    fieldsets = (
-        ('Content', {
-            'fields': ('title', 'slug', 'content', 'category', 'author')
-        }),
-        ('Status', {
-            'fields': ('status', 'published_at')
-        }),
-        ('Timestamps', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        }),
-    )
+    # ONLY fields that we know exist on Post:
+    list_display = ("title", "category", "status", "author", "updated_at")
+    list_filter  = ("status", "category", "updated_at")
+    search_fields = ("title", "content")
+    prepopulated_fields = {"slug": ("title",)}
+    readonly_fields = ()  # leave empty to avoid referencing non-existent attributes
 
+    actions = ["approve_posts", "reject_posts"]
 
-@admin.register(ExternalLink)
-class ExternalLinkAdmin(admin.ModelAdmin):
-    list_display = ['title', 'url', 'category', 'created_at']
-    list_filter = ['category', 'created_at']
-    search_fields = ['title', 'url']
+    def approve_posts(self, request, queryset):
+        queryset.update(status="approved")
+    approve_posts.short_description = "Approve selected posts"
 
+    def reject_posts(self, request, queryset):
+        queryset.update(status="rejected")
+    reject_posts.short_description = "Reject selected posts"
 
 @admin.register(Bookmark)
 class BookmarkAdmin(admin.ModelAdmin):
-    list_display = ['user', 'post', 'created_at']
-    list_filter = ['created_at']
-    search_fields = ['user__username', 'post__title']
+    list_display = ("user", "post")
+    search_fields = ("user__username", "post__title")
+
+@admin.register(ExternalLink)
+class ExternalLinkAdmin(admin.ModelAdmin):
+    list_display = ("title", "url", "category")
+    search_fields = ("title", "url")
 
