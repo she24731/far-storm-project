@@ -1,5 +1,4 @@
 from django.apps import AppConfig
-from django.conf import settings
 from django.db.utils import OperationalError, ProgrammingError
 
 
@@ -9,43 +8,39 @@ class CoreConfig(AppConfig):
 
     def ready(self):
         """
-        Startup hook that auto-creates admin user in production.
+        Startup hook that ensures admin user exists and is up-to-date.
         
-        Only runs when DEBUG=False and DJANGO_ADMIN_INITIAL_PASSWORD is set.
-        Creates admin user if it doesn't exist, otherwise does nothing.
+        Requires DJANGO_ADMIN_INITIAL_PASSWORD environment variable to be set.
+        Creates admin user if it doesn't exist, or updates password and flags if it does.
         """
-        # Only run in production (DEBUG=False)
-        if settings.DEBUG:
-            return
+        import os
         
         # Only proceed if password environment variable is set
-        import os
         admin_password = os.environ.get('DJANGO_ADMIN_INITIAL_PASSWORD', '').strip()
         if not admin_password:
             return
         
-        # Try to create admin user, but handle database errors gracefully
+        # Try to create or update admin user, but handle database errors gracefully
         # (in case migrations haven't run yet)
         try:
             from django.contrib.auth import get_user_model
             User = get_user_model()
             
-            # Check if admin user already exists
-            if User.objects.filter(username='admin').exists():
-                return  # Admin already exists, do nothing
-            
-            # Create admin user
-            User.objects.create_user(
+            # Get or create admin user
+            user, created = User.objects.get_or_create(
                 username='admin',
-                email='chun-hung.yeh@yale.edu',
-                password=admin_password,
-                is_staff=True,
-                is_superuser=True
+                defaults={'email': 'chun-hung.yeh@yale.edu'},
             )
+            
+            # Always ensure admin user has correct flags and password
+            user.is_staff = True
+            user.is_superuser = True
+            user.set_password(admin_password)
+            user.save()
         except (OperationalError, ProgrammingError):
             # Database not ready yet (migrations not applied), just return
             return
         except Exception:
-            # Any other error, fail silently in production
+            # Any other error, fail silently
             return
 
