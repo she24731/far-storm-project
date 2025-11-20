@@ -4,13 +4,13 @@
 
 **Sprint Duration:** 1 week  
 
-**Team Size:** Solo Developer (Yang)  
+**Team Members:** Chun-Hung Yeh, Qijing (Celine) Li, Denise Wu  
 
 ---
 
 ## 🎯 Sprint Goal  
 
-Build a working MVP with at least one **complete contributor → admin → public** user journey, including authentication, CRUD operations, role permissions, and staging readiness.
+Build a working MVP with at least one complete **Contributor → Admin → Public** user journey, including authentication, CRUD operations, permissions, staging deployment, and automated tests.
 
 ---
 
@@ -18,55 +18,59 @@ Build a working MVP with at least one **complete contributor → admin → publi
 
 ### Authentication & Roles
 
-- **US-101**: As a user, I can sign up and automatically be assigned the *Contributor* role. (3 pts)
+- **US-101**: Signup → auto-assign Contributor role (3 pts)  
 
-- **US-102**: As a user, I can log in and log out. (2 pts)
+- **US-102**: Login / Logout flow (2 pts)
 
 ### Contributor CRUD
 
-- **US-201**: As a Contributor, I can create a post. (5 pts)  
+- **US-201**: Create Post (5 pts)  
 
-- **US-202**: As a Contributor, I can edit my own posts. (3 pts)  
+- **US-202**: Edit Own Posts (3 pts)  
 
-- **US-203**: As a Contributor, I can delete my own posts. (3 pts)  
+- **US-203**: Delete Own Posts (3 pts)  
 
-- **US-204**: As a Contributor, I can bookmark posts. (3 pts)
+- **US-204**: Bookmark Posts (3 pts)
 
 ### Admin Workflow
 
-- **US-301**: As an Admin, I can approve or reject pending posts. (5 pts)  
+- **US-301**: Approve/Reject Posts (5 pts)  
 
-- **US-302**: As an Admin, I can see all submissions in a dashboard. (3 pts)
+- **US-302**: Admin dashboard view (3 pts)
 
 ### Public User Journey
 
-- **US-401**: As a public user, I can browse approved posts. (3 pts)  
+- **US-401**: Public sees approved posts (3 pts)  
 
-- **US-402**: As a public user, I can open a post detail page. (2 pts)
+- **US-402**: Public views post detail page (2 pts)
 
 ### Testing
 
-- **US-501**: Add unit tests for Post, Category, ExternalLink, Bookmark models. (5 pts)  
+- **US-501**: Unit tests for models (5 pts)  
 
-- **US-502**: Add integration tests for signup/login/CRUD/admin flow. (5 pts)
+- **US-502**: Integration tests for signup/login/CRUD/admin flow (5 pts)
 
-### Staging Environment
+### Staging & Deployment
 
-- **US-601**: Configure PostgreSQL using `DATABASE_URL` for staging. (3 pts)  
+- **US-601**: Configure PostgreSQL using DATABASE_URL (3 pts)  
 
-- **US-602**: Add healthcheck endpoint. (2 pts)
+- **US-602**: Add healthcheck endpoint (2 pts)
 
 ---
 
 ## 🧮 Story Points Committed  
 
-Total committed: **44 points**
+**44 points**
 
 ---
 
 ## 👥 Team Assignments  
 
-- **Yang Zhao** — All design, development, testing, documentation
+| Team Member | Responsibilities in Sprint 3 |
+|-------------|------------------------------|
+| **Chun-Hung Yeh** | Full-stack development (Django models, views, templates), PostgreSQL integration, staging deployment, authentication, CRUD, test suite, documentation |
+| **Qijing (Celine) Li** | UX flow validation, content review, backlog refinement, user experience feedback |
+| **Denise Wu** | Acceptance testing, UX critique, contributor-side workflow testing, feature prioritization |
 
 ---
 
@@ -74,40 +78,20 @@ Total committed: **44 points**
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Render PostgreSQL misconfiguration | High | Use internal DB URL; add healthcheck endpoint |
-| Django permissions complexity | Medium | Write integration tests early |
-| Staging deployment errors | Medium | Use "Clear build cache & deploy" when configs change |
-| Time constraints | Medium | Focus on one complete user journey |
+| Incorrect Postgres settings | High | Use internal DB URL + healthcheck |
+| Permission logic complexity | Medium | Write integration tests early |
+| Staging deployment issues | Medium | Clear build cache when config changes |
+| Time constraints | Medium | Focus on end-to-end journey only |
 
 ---
 
----
-
-# Sprint 3 Review  
-
-**Project:** Yale Newcomer Survival Guide  
-
-**Sprint:** 3  
-
----
+# Sprint 3 Review
 
 ## 🎯 Sprint Goal  
 
-Implement a fully functional MVP with:  
+Deliver a functioning MVP with a complete Contributor → Admin → Public journey.
 
-- complete contributor → admin → public user journey  
-
-- CRUD operations  
-
-- role permissions  
-
-- user authentication  
-
-- working tests  
-
-- staging environment readiness  
-
-### ✅ Goal Achieved — **YES**
+**Goal Achieved:** ✅ YES
 
 ---
 
@@ -171,31 +155,29 @@ None — all Sprint 3 stories completed successfully.
 
 ## 🧪 Demo Summary  
 
-**Full user journey demonstrated:**
+A full working MVP journey:
 
-1. User signs up → assigned Contributor  
+1. User signs up → Contributor  
 
 2. User logs in  
 
-3. User creates a post → post enters *Pending Review*  
+3. User creates post → pending  
 
-4. Admin logs in → approves the post  
+4. Admin approves  
 
-5. Public visitor can now see the approved post  
+5. Post becomes public  
 
-This meets the Sprint 3 requirement of at least *one complete end-to-end workflow*.
+6. Public user can browse approved posts  
 
 ---
 
 ## 📊 Metrics  
 
-**Sprint 2 Velocity:** 20 points  
+Sprint 2 Velocity: 20  
 
-**Sprint 3 Velocity:** 44 points *(solo developer – increased velocity due to clarity + automation)*  
+Sprint 3 Velocity: 44  
 
-**Average Velocity:**  
-
-(20 + 44) / 2 = **32 points**
+Average Velocity: 32  
 
 ---
 
@@ -225,11 +207,7 @@ This meets the Sprint 3 requirement of at least *one complete end-to-end workflo
 
 ---
 
-# Sprint 3 Retrospective  
-
-**Project:** Yale Newcomer Survival Guide  
-
----
+# Sprint 3 Retrospective
 
 ## 👍 What Went Well
 
@@ -269,7 +247,7 @@ This meets the Sprint 3 requirement of at least *one complete end-to-end workflo
 
    - Action: Centralize all env variable documentation  
 
-   - Owner: Yang  
+   - Owner: Chun-Hung Yeh  
 
    - Due: Early Sprint 4  
 
@@ -277,7 +255,7 @@ This meets the Sprint 3 requirement of at least *one complete end-to-end workflo
 
    - Action: Add staging smoke-tests before deployment  
 
-   - Owner: Yang  
+   - Owner: Chun-Hung Yeh  
 
    - Due: Sprint 4  
 
@@ -285,21 +263,15 @@ This meets the Sprint 3 requirement of at least *one complete end-to-end workflo
 
 ## 🧑‍🤝‍🧑 Team Dynamics Reflection  
 
-Solo developer sprint → advantages:  
+Sprint 3 was a collaborative effort:  
 
-- Fast decision-making  
+- Chun-Hung built nearly all technical components  
 
-- Rapid iteration  
+- Celine validated UX flows and improved navigability  
 
-- Tight integration between code + testing + deployment  
+- Denise performed acceptance testing and improved feature clarity  
 
-Challenges:  
-
-- No second reviewer for code  
-
-- All tasks require context-switching  
-
-Overall team health: **Strong**, but Sprint 4 should incorporate peer review where possible.
+Overall team collaboration is strong.
 
 ---
 
@@ -307,22 +279,14 @@ Overall team health: **Strong**, but Sprint 4 should incorporate peer review whe
 
 | Action Item | Owner | Deadline |
 |------------|--------|----------|
-| Document all env vars | Yang | Sprint 4 start |
-| Add automated staging smoke tests | Yang | Sprint 4 |
-| UI improvement tasks | Yang | Sprint 4 |
-| Implement A/B test endpoint | Yang | Sprint 4 |
+| Document all env vars | Chun-Hung Yeh | Sprint 4 start |
+| Add automated staging smoke tests | Chun-Hung Yeh | Sprint 4 |
+| UI improvement tasks | Celine Li | Sprint 4 |
+| Implement A/B test endpoint | Chun-Hung Yeh | Sprint 4 |
 
 ---
 
-# Sprint 3 Report  
-
-**Course:** MGT 656 – Sprint Development  
-
-**Project:** Yale Newcomer Survival Guide  
-
-**Sprint:** 3  
-
----
+# Sprint 3 Report (for grading)
 
 ## 1. Sprint Goal & Achievement
 
@@ -458,13 +422,12 @@ Sprint 4 will focus on:
 
 ## 8. Links
 
-- **Sprint Planning / Review / Retrospective Doc:** `docs/sprints/Sprint_3_review.md`  
+- GitHub Project Board: https://github.com/users/she24731/projects/6  
 
-- **GitHub Project Board:** https://github.com/users/she24731/projects/6  
+- This document: docs/sprints/Sprint_3_review.md
 
 ---
 
 **Sprint 3 successfully delivered a working MVP with complete user value, strong code quality, and staging readiness.**
 
 ---
-
