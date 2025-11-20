@@ -7,6 +7,7 @@ Configuration for Django 5 with DuckDB database backend.
 from pathlib import Path
 from decouple import config
 import os
+import dj_database_url
 
 # Build paths
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -80,20 +81,18 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # ============================================================================
-# DATABASE CONFIGURATION - SQLite (DuckDB optional for later analytics)
+# DATABASE CONFIGURATION
 # ============================================================================
 
-# Use SQLite for MVP deployment
-# DuckDB can be added later for analytics, but not replacing Django DB
+# Use DATABASE_URL environment variable if set (Render Postgres),
+# otherwise fall back to SQLite for local development
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db' / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL', 'sqlite:///db.sqlite3'),
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
-
-# Ensure db directory exists
-os.makedirs(BASE_DIR / 'db', exist_ok=True)
 
 # ============================================================================
 # PASSWORD VALIDATION
