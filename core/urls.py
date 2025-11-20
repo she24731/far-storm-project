@@ -10,6 +10,9 @@ from . import views
 app_name = 'core'
 
 urlpatterns = [
+    # Health check (must be first for fast response)
+    path('health/', views.health_check, name='health'),
+    
     # Public pages
     path('', views.home, name='home'),
     path('c/<slug:slug>/', views.category_list, name='category_list'),

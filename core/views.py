@@ -368,3 +368,32 @@ class CustomLogoutView(LogoutView):
         messages.success(request, 'You have been successfully logged out.')
         return super().dispatch(request, *args, **kwargs)
 
+
+# ============================================================================
+# HEALTH CHECK ENDPOINT
+# ============================================================================
+
+def health_check(request):
+    """
+    Lightweight health check endpoint for monitoring.
+    
+    URL: /health/
+    Returns JSON with status and database connectivity.
+    Public endpoint, no authentication required.
+    """
+    try:
+        # Perform a minimal database query to check connectivity
+        Post.objects.exists()
+        db_status = "ok"
+        http_status = 200
+    except Exception as e:
+        db_status = "unreachable"
+        http_status = 500
+    
+    response_data = {
+        "status": "ok" if db_status == "ok" else "error",
+        "db": db_status,
+    }
+    
+    return JsonResponse(response_data, status=http_status)
+

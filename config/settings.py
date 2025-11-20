@@ -18,8 +18,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-dev-key-change-in-production-12345')
 
-# DEBUG: Read from environment variable, default True for local development
-DEBUG = config('DEBUG', default=True, cast=bool)
+# DEBUG: Default to False for production safety
+# Set DEBUG=True in local .env file for local development
+DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
 # ALLOWED_HOSTS: Support local development and Render production
 ALLOWED_HOSTS = [
