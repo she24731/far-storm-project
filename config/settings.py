@@ -84,8 +84,8 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # DATABASE CONFIGURATION
 # ============================================================================
 
-# Use DATABASE_URL environment variable if set (Render Postgres),
-# otherwise fall back to SQLite for local development
+# On Render, we use Postgres via DATABASE_URL
+# Locally, we fall back to SQLite if DATABASE_URL is not set
 DATABASES = {
     'default': dj_database_url.config(
         default=os.getenv('DATABASE_URL', 'sqlite:///db.sqlite3'),
