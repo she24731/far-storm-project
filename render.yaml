@@ -37,4 +37,5 @@ services:
 #    - Collect static files (WhiteNoise will serve them)
 #    - Run database migrations
 # 4. The start command uses gunicorn to serve the Django app
-# 5. SQLite database will be created in the /opt/render/project/src/db/ directory
+# 5. DATABASE_URL environment variable must be set in Render dashboard (PostgreSQL connection string)
+# 6. Migrations run automatically during build and on container startup

@@ -33,8 +33,8 @@ RUN python manage.py collectstatic --noinput || true
 EXPOSE 8000
 
 # Run migrations, setup groups, seed data, and start gunicorn
-# Using 1 worker to serialize writes for DuckDB
+# Migrations are run automatically on startup
 CMD python manage.py migrate && \
     python manage.py setup_groups && \
     (python manage.py seed_data || true) && \
-    gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 1
+    gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2

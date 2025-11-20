@@ -1,7 +1,7 @@
 """
 Django settings for Yale Newcomer Survival Guide.
 
-Configuration for Django 5 with DuckDB database backend.
+Configuration for Django 4.2 with PostgreSQL (production) or SQLite (local development).
 """
 
 from pathlib import Path
