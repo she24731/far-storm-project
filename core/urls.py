@@ -17,6 +17,7 @@ urlpatterns = [
     
     # Contributor pages
     path('submit/', views.submit_post, name='submit_post'),
+    path('create/', views.submit_post, name='create_post'),  # Alias for better UX
     path('submit/<int:post_id>/', views.submit_post, name='submit_post_edit'),
     path('my-posts/', views.contributor_post_list, name='contributor_post_list'),
     path('my-posts/delete/<int:post_id>/', views.contributor_delete_post, name='contributor_delete_post'),

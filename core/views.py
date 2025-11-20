@@ -58,15 +58,28 @@ def category_list(request, slug):
     Category listing page showing approved posts in a category.
     
     URL: /c/<slug>/
+    Public users see only approved posts.
+    Contributors see approved posts + their own drafts/pending posts.
+    Admins see all posts.
     """
     category = get_object_or_404(Category, slug=slug)
     posts = Post.objects.filter(category=category, status='approved').select_related('author', 'category')
     
-    # Contributors and Admins can see pending/draft posts
+    # Contributors can see approved posts + their own drafts/pending posts
+    # Admins can see all posts
     if request.user.is_authenticated:
         user_groups = [g.name for g in request.user.groups.all()]
-        if CONTRIBUTOR_GROUP in user_groups or request.user.is_staff:
+        if request.user.is_staff:
+            # Admin: see all posts
             posts = Post.objects.filter(category=category).select_related('author', 'category')
+        elif CONTRIBUTOR_GROUP in user_groups:
+            # Contributor: see approved posts + own drafts/pending
+            from django.db.models import Q
+            posts = Post.objects.filter(
+                category=category
+            ).filter(
+                Q(status='approved') | Q(author=request.user)
+            ).select_related('author', 'category')
     
     external_links = ExternalLink.objects.filter(category=category)
     
@@ -83,17 +96,31 @@ def post_detail(request, slug):
     Post detail page.
     
     URL: /p/<slug>/
-    Only approved posts visible to readers.
+    Public users can only view approved posts.
+    Contributors can view approved posts + their own drafts/pending posts.
+    Admins can view all posts.
     """
     post = get_object_or_404(Post, slug=slug)
     
     # Check if user can view this post
     if post.status != 'approved':
         if not request.user.is_authenticated:
+            messages.error(request, "This post is not available. Please log in.")
             return redirect('core:login')
         
+        # Contributors can only see their own non-approved posts
+        # Admins can see all posts
         user_groups = [g.name for g in request.user.groups.all()]
-        if CONTRIBUTOR_GROUP not in user_groups and not request.user.is_staff:
+        if request.user.is_staff:
+            # Admin can see all posts
+            pass
+        elif CONTRIBUTOR_GROUP in user_groups:
+            # Contributor can only see their own non-approved posts
+            if post.author != request.user:
+                messages.error(request, "You can only view your own draft or pending posts.")
+                return redirect('core:home')
+        else:
+            # Regular users cannot see non-approved posts
             messages.error(request, "This post is not available.")
             return redirect('core:home')
     
