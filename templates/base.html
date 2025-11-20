@@ -23,12 +23,21 @@
                         <a class="nav-link" href="{% url 'core:home' %}">Home</a>
                     </li>
                     {% if user.is_authenticated %}
-                        {# TODO: restrict this to 'Contributors' group - currently checks user.groups.filter(name='Contributor').exists() #}
                         {% for group in user.groups.all %}
                             {% if group.name == 'Contributor' %}
                                 <li class="nav-item">
                                     <a class="nav-link" href="{% url 'core:submit_post' %}">
-                                        <i class="bi bi-pencil"></i> Submit Post
+                                        <i class="bi bi-plus-circle"></i> Create Post
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{% url 'core:contributor_post_list' %}">
+                                        <i class="bi bi-file-text"></i> My Posts
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{% url 'core:bookmarks_list' %}">
+                                        <i class="bi bi-bookmark"></i> Bookmarks
                                     </a>
                                 </li>
                             {% endif %}

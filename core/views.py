@@ -154,6 +154,90 @@ def submit_post(request, post_id=None):
 
 
 @login_required
+@user_passes_test(is_contributor, login_url='core:home')
+def contributor_post_list(request):
+    """
+    List all posts created by the current contributor.
+    
+    URL: /my-posts/
+    Shows drafts, pending, approved, and rejected posts.
+    """
+    posts = Post.objects.filter(author=request.user).select_related('category').order_by('-updated_at')
+    
+    context = {
+        'posts': posts,
+    }
+    return render(request, 'core/contributor_post_list.html', context)
+
+
+@login_required
+@user_passes_test(is_contributor, login_url='core:home')
+def contributor_delete_post(request, post_id):
+    """
+    Delete a post (only own posts).
+    
+    URL: /my-posts/delete/<post_id>/
+    """
+    post = get_object_or_404(Post, id=post_id)
+    
+    # Only allow deleting own posts unless admin
+    if post.author != request.user and not request.user.is_staff:
+        messages.error(request, "You can only delete your own posts.")
+        return redirect('core:contributor_post_list')
+    
+    if request.method == 'POST':
+        post_title = post.title
+        post.delete()
+        messages.success(request, f'Post "{post_title}" has been deleted.')
+        return redirect('core:contributor_post_list')
+    
+    context = {
+        'post': post,
+    }
+    return render(request, 'core/contributor_delete_post.html', context)
+
+
+@login_required
+def bookmark_post(request, slug):
+    """
+    Toggle bookmark for a post.
+    
+    URL: /p/<slug>/bookmark/
+    """
+    post = get_object_or_404(Post, slug=slug)
+    
+    # Only allow bookmarking approved posts (or own posts for contributors)
+    if post.status != 'approved' and post.author != request.user:
+        messages.error(request, "You can only bookmark approved posts.")
+        return redirect('core:post_detail', slug=post.slug)
+    
+    bookmark, created = Bookmark.objects.get_or_create(user=request.user, post=post)
+    
+    if created:
+        messages.success(request, f'Post "{post.title}" has been bookmarked.')
+    else:
+        bookmark.delete()
+        messages.info(request, f'Post "{post.title}" has been removed from bookmarks.')
+    
+    return redirect('core:post_detail', slug=post.slug)
+
+
+@login_required
+def bookmarks_list(request):
+    """
+    List all bookmarked posts for the current user.
+    
+    URL: /bookmarks/
+    """
+    bookmarks = Bookmark.objects.filter(user=request.user).select_related('post', 'post__category', 'post__author').order_by('-created_at')
+    
+    context = {
+        'bookmarks': bookmarks,
+    }
+    return render(request, 'core/bookmarks_list.html', context)
+
+
+@login_required
 @user_passes_test(is_admin, login_url='core:home')
 def dashboard(request):
     """
@@ -204,7 +288,7 @@ def signup(request):
     User registration view.
     
     Creates a new user account and automatically logs them in.
-    New users are assigned to the Reader group by default.
+    New users are automatically assigned to the Contributor group.
     """
     if request.user.is_authenticated:
         # Redirect authenticated users away from signup page
@@ -215,18 +299,18 @@ def signup(request):
         if form.is_valid():
             user = form.save()
             
-            # Assign user to Reader group by default
+            # Assign user to Contributor group by default
             try:
-                reader_group = Group.objects.get(name=READER_GROUP)
-                user.groups.add(reader_group)
+                contributor_group = Group.objects.get(name=CONTRIBUTOR_GROUP)
+                user.groups.add(contributor_group)
             except Group.DoesNotExist:
-                # If Reader group doesn't exist, create it
-                reader_group = Group.objects.create(name=READER_GROUP)
-                user.groups.add(reader_group)
+                # If Contributor group doesn't exist, create it
+                contributor_group = Group.objects.create(name=CONTRIBUTOR_GROUP)
+                user.groups.add(contributor_group)
             
             # Automatically log the user in after registration
             login(request, user)
-            messages.success(request, f'Welcome, {user.username}! Your account has been created successfully.')
+            messages.success(request, f'Welcome, {user.username}! Your account has been created. You can now create posts!')
             return redirect('core:home')
     else:
         form = UserRegistrationForm()

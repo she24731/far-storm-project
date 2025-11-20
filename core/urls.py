@@ -18,6 +18,10 @@ urlpatterns = [
     # Contributor pages
     path('submit/', views.submit_post, name='submit_post'),
     path('submit/<int:post_id>/', views.submit_post, name='submit_post_edit'),
+    path('my-posts/', views.contributor_post_list, name='contributor_post_list'),
+    path('my-posts/delete/<int:post_id>/', views.contributor_delete_post, name='contributor_delete_post'),
+    path('p/<slug:slug>/bookmark/', views.bookmark_post, name='bookmark_post'),
+    path('bookmarks/', views.bookmarks_list, name='bookmarks_list'),
     
     # Admin dashboard
     path('dashboard/', views.dashboard, name='dashboard'),

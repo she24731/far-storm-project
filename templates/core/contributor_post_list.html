@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}My Posts - Yale Newcomer Survival Guide{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-file-text"></i> My Posts</h2>
+    <a href="{% url 'core:submit_post' %}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Create New Post
+    </a>
+</div>
+
+{% if posts %}
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Status</th>
+                    <th>Last Updated</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for post in posts %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'core:post_detail' post.slug %}">{{ post.title }}</a>
+                        </td>
+                        <td>
+                            <span class="badge bg-primary">{{ post.category.name }}</span>
+                        </td>
+                        <td>
+                            {% if post.status == 'approved' %}
+                                <span class="badge bg-success">{{ post.get_status_display }}</span>
+                            {% elif post.status == 'pending' %}
+                                <span class="badge bg-warning text-dark">{{ post.get_status_display }}</span>
+                            {% elif post.status == 'rejected' %}
+                                <span class="badge bg-danger">{{ post.get_status_display }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ post.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ post.updated_at|date:"M d, Y" }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'core:submit_post_edit' post.id %}" class="btn btn-outline-primary">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </a>
+                                <a href="{% url 'core:contributor_delete_post' post.id %}" class="btn btn-outline-danger">
+                                    <i class="bi bi-trash"></i> Delete
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> You haven't created any posts yet. 
+        <a href="{% url 'core:submit_post' %}">Create your first post</a>!
+    </div>
+{% endif %}
+{% endblock %}
+
