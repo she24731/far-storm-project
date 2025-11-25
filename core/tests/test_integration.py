@@ -124,20 +124,22 @@ class ContributorPostCreationTest(TestCase):
         self.assertEqual(response.status_code, 200)
     
     def test_contributor_can_create_post(self):
-        """Test that contributor can create a new post."""
+        """Test that contributor can create a new post without providing slug."""
         response = self.client.post(reverse('core:submit_post'), {
             'title': 'New Post',
-            'slug': 'new-post',
             'content': 'This is a new post.',
             'category': self.category.id,
             'status': 'pending'
         })
         
         self.assertEqual(response.status_code, 302)  # Redirect after creation
-        self.assertTrue(Post.objects.filter(slug='new-post').exists())
+        self.assertTrue(Post.objects.filter(title='New Post').exists())
         
-        post = Post.objects.get(slug='new-post')
+        post = Post.objects.get(title='New Post')
         self.assertEqual(post.title, 'New Post')
+        # Slug should be auto-generated
+        self.assertEqual(post.slug, 'new-post')
+        self.assertIsNotNone(post.slug)
         self.assertEqual(post.author, self.user)
         self.assertEqual(post.status, 'pending')
     
