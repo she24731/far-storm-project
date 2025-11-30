@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}A/B Test - far-storm{% endblock %}
+
+{% block content %}
+  <div class="container py-5">
+    <h1 class="mb-3">A/B Test - Team far-storm</h1>
+    <p class="mb-3">
+      This page is used for our A/B test on the button label.
+      The button text is either <strong>kudos</strong> or <strong>thanks</strong>.
+    </p>
+    
+    <h2 class="h5">Team members</h2>
+    <ul>
+      {% for member in team_members %}
+        <li>{{ member }}</li>
+      {% endfor %}
+    </ul>
+    
+    <div class="mt-4">
+      <button id="abtest" class="btn btn-primary" data-variant="{{ variant }}">
+        {{ variant }}
+      </button>
+    </div>
+  </div>
+  
+  {# Analytics script for this A/B test #}
+  <script>
+    (function() {
+      const variant = "{{ variant }}";
+      const pagePath = "/218b7ae/";
+      
+      // GA snippet in base.html defines gtag(), so use it here.
+      if (typeof gtag === "function") {
+        gtag('event', 'ab_variant_shown', {
+          'event_category': 'abtest',
+          'event_label': variant,
+          'variant': variant,
+          'page_path': pagePath
+        });
+      }
+      
+      const btn = document.getElementById('abtest');
+      if (btn && typeof gtag === "function") {
+        btn.addEventListener('click', function() {
+          gtag('event', 'ab_variant_clicked', {
+            'event_category': 'abtest',
+            'event_label': variant,
+            'variant': variant,
+            'page_path': pagePath
+          });
+        });
+      }
+    })();
+  </script>
+{% endblock %}
+

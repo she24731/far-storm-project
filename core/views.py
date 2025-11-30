@@ -13,9 +13,10 @@ from django.contrib import messages
 from django.db.models import Q
 from django.utils import timezone
 from django.http import JsonResponse
+import random
 from .models import Category, Post, Bookmark, ExternalLink
 from .forms import PostForm, UserRegistrationForm
-from config.settings import READER_GROUP, CONTRIBUTOR_GROUP, ADMIN_GROUP
+from config.settings import CONTRIBUTOR_GROUP
 
 
 def is_contributor(user):
@@ -386,7 +387,7 @@ def health_check(request):
         Post.objects.exists()
         db_status = "ok"
         http_status = 200
-    except Exception as e:
+    except Exception:
         db_status = "unreachable"
         http_status = 500
     
@@ -396,4 +397,46 @@ def health_check(request):
     }
     
     return JsonResponse(response_data, status=http_status)
+
+
+def abtest_view(request):
+    """
+    A/B test endpoint for team far-storm.
+    
+    URL: /218b7ae/
+    Publicly accessible, no authentication required.
+    Shows team members and a button with variant text (kudos/thanks).
+    """
+    # Team information
+    team_nickname = "far-storm"
+    team_members = [
+        "Chun-Hung Yeh",
+        "Celine (Qijing) Li",
+        "Denise Wu"
+    ]
+    
+    # Determine variant: check cookie first, then random
+    variant = request.COOKIES.get('ab_variant')
+    
+    if variant not in ['kudos', 'thanks']:
+        # Randomly choose variant (50/50)
+        variant = random.choice(['kudos', 'thanks'])
+    
+    # Prepare context
+    context = {
+        'team_nickname': team_nickname,
+        'team_members': team_members,
+        'variant': variant,
+    }
+    
+    # Render template
+    response = render(request, 'core/abtest.html', context)
+    
+    # Set cookie if it doesn't exist (30 days expiration)
+    if 'ab_variant' not in request.COOKIES:
+        # 30 days = 30 * 24 * 60 * 60 seconds
+        max_age = 30 * 24 * 60 * 60
+        response.set_cookie('ab_variant', variant, max_age=max_age, httponly=False)
+    
+    return response
 

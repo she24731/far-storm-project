@@ -137,7 +137,7 @@ class BookmarkModelTest(TestCase):
     
     def test_bookmark_cascade_delete_on_user(self):
         """Test that bookmarks are deleted when user is deleted."""
-        bookmark = Bookmark.objects.create(
+        Bookmark.objects.create(
             user=self.user,
             post=self.post
         )
@@ -149,7 +149,7 @@ class BookmarkModelTest(TestCase):
     
     def test_bookmark_cascade_delete_on_post(self):
         """Test that bookmarks are deleted when post is deleted."""
-        bookmark = Bookmark.objects.create(
+        Bookmark.objects.create(
             user=self.user,
             post=self.post
         )

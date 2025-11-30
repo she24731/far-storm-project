@@ -370,7 +370,7 @@ The increase reflects both growing clarity and larger technical tasks in Sprint 
 
 - Need UI enhancements for contributor dashboard  
 
-- Need A/B testing endpoint (`/{7-char-sha1-hash}`)  
+- Need A/B testing endpoint (`/218b7ae/` for team far-storm)  
 
 - Need more robust error handling before final submission  
 

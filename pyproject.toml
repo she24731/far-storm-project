@@ -1,0 +1,23 @@
+[tool.ruff]
+line-length = 100
+exclude = [
+    "migrations",
+    ".venv",
+    "venv",
+    "*/migrations/*",
+    "db.sqlite3",
+    "*/db.sqlite3",
+    "staticfiles",
+    "app_data",
+    "db",
+]
+
+[tool.ruff.lint]
+select = ["E", "F"]
+ignore = [
+    "E501",  # long lines
+]
+
+[tool.ruff.lint.per-file-ignores]
+"yale_newcomer_survival_guide/settings.py" = ["F401"]  # allow conditional imports
+

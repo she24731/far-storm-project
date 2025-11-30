@@ -4,7 +4,7 @@ Integration tests for user flows and workflows.
 from django.test import TestCase, Client
 from django.contrib.auth.models import User, Group
 from django.urls import reverse
-from core.models import Post, Category, Bookmark
+from core.models import Post, Category
 from config.settings import CONTRIBUTOR_GROUP
 
 
@@ -31,9 +31,9 @@ class SignupFlowTest(TestCase):
     
     def test_signup_assigns_contributor_role(self):
         """Test that new users are assigned to Contributor group."""
-        contributor_group = Group.objects.get_or_create(name=CONTRIBUTOR_GROUP)[0]
+        Group.objects.get_or_create(name=CONTRIBUTOR_GROUP)
         
-        response = self.client.post(reverse('core:signup'), {
+        self.client.post(reverse('core:signup'), {
             'username': 'newuser',
             'email': 'newuser@example.com',
             'password1': 'testpass123',
