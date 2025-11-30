@@ -14,8 +14,8 @@ A Django 5 web application that helps Yale newcomers find categorized tips and r
 
 ## Tech Stack
 
-- **Backend**: Django 5 (Python 3.11+)
-- **Database**: SQLite (for MVP deployment)
+- **Backend**: Django 4.2 (Python 3.9+)
+- **Database**: PostgreSQL (production via Render), SQLite (local development)
 - **Frontend**: Django Templates + Bootstrap 5
 - **Static Files**: WhiteNoise
 - **Production Server**: Gunicorn
@@ -98,55 +98,79 @@ After running `seed_data`, you can log in with:
 
    You will be prompted to authenticate. Use your GitHub credentials or a personal access token.
 
-## Render Deployment
+## Deployment
 
-### Prerequisites
+### Environments
 
-- GitHub repository with the code pushed
-- Render account (sign up at https://render.com)
+#### Production
 
-### Step-by-Step Deployment
+- **URL**: https://yale-newcomer-survival-guide.onrender.com
+- **Platform**: Render Web Service
+- **Branch**: `main` (auto-deploy enabled)
+- **Database**: Render PostgreSQL via `DATABASE_URL` environment variable
+- **DEBUG**: `False` (production mode)
 
-1. **Create a new Web Service on Render**:
+**Production Environment Variables** (set in Render dashboard):
+
+| Variable | Required | Description | Example |
+|----------|----------|-------------|---------|
+| `DJANGO_SECRET_KEY` | Yes | Django secret key for security | Generate with: `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"` |
+| `DATABASE_URL` | Yes | PostgreSQL connection string | Auto-provided by Render PostgreSQL service |
+| `DEBUG` | No | Debug mode | `False` (set in render.yaml) |
+| `RENDER_EXTERNAL_HOSTNAME` | Auto | Render hostname | Auto-set by Render, added to `ALLOWED_HOSTS` |
+| `DJANGO_ADMIN_INITIAL_PASSWORD` | Optional | Initial admin password | (if using auto-admin setup) |
+
+**Note**: Google Analytics measurement ID (`G-9XJWT2P5LE`) is currently hardcoded in `templates/base.html`. This is acceptable as GA IDs are not sensitive.
+
+#### Staging
+
+- **URL**: https://`<your-staging-service>`.onrender.com *(placeholder - create a separate Render service)*
+- **Current Status**: Currently, staging and production share the same Render service. For the course, we conceptually treat this as production. A separate staging service can be added later following these steps.
+
+**Recommended Staging Setup** (for future):
+
+1. Create a second Render Web Service from the same GitHub repository
+2. Configure with separate environment variables:
+   - Same `DJANGO_SECRET_KEY` approach (generate a different key for staging)
+   - Point to the same `DATABASE_URL` or a separate PostgreSQL instance depending on your needs
+   - Set `DEBUG=False` for staging (or `True` for testing, then switch to `False`)
+   - Configure `RENDER_EXTERNAL_HOSTNAME` to the staging service URL
+3. Optionally configure a different branch (e.g., `develop`) for staging deployments
+4. Use staging to test deployments before promoting to production
+
+**Note**: If a separate staging service is not created, the single service at `yale-newcomer-survival-guide.onrender.com` serves as the production deployment.
+
+### Deployment Procedure
+
+#### Initial Setup
+
+1. **Push code to GitHub** on the `main` branch
+2. **Create Web Service on Render**:
    - Go to https://dashboard.render.com
    - Click "New +" → "Web Service"
-   - Connect your GitHub account if not already connected
-   - Select the repository: `she24731/yale-newcomer-survival-guide`
+   - Connect GitHub account if not already connected
+   - Select repository: `she24731/yale-newcomer-survival-guide`
+   - Render will auto-detect `render.yaml`
 
-2. **Render will auto-detect `render.yaml`**:
-   - Render will automatically detect the `render.yaml` file in your repo
-   - It will use the build and start commands defined there
+3. **Set Environment Variables** in Render dashboard:
+   - Go to your service → "Environment" tab
+   - Add all required variables (see Production Environment Variables above)
+   - `DATABASE_URL` is automatically provided if you've linked a PostgreSQL database
 
-3. **Set environment variables** in Render dashboard:
-   
-   **Required variables:**
-   
-   - `DJANGO_SECRET_KEY`: 
-     - Generate a secure key by running locally:
-       ```bash
-       python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
-       ```
-     - Copy the output and paste it as the value
-   
-   - `ALLOWED_HOSTS`: 
-     - After Render creates your service, you'll get a URL like: `https://yale-newcomer-survival-guide.onrender.com`
-     - Set this to: `yale-newcomer-survival-guide.onrender.com` (or whatever your service name is)
-     - You can also add multiple hosts separated by commas if needed
-   
-   **Optional variables (already set in render.yaml):**
-   
-   - `DEBUG`: Already set to `False` in render.yaml (production mode)
-   - Other variables are handled automatically
+4. **Create PostgreSQL Database** (if not already created):
+   - In Render dashboard, create a new PostgreSQL database
+   - Render will automatically set the `DATABASE_URL` environment variable
+   - The database connection is configured via `dj-database-url` in `config/settings.py`
 
-4. **Deploy**:
-   - Click "Create Web Service"
+5. **Deploy**:
+   - Click "Create Web Service" or enable auto-deploy
    - Render will:
      - Install dependencies from `requirements.txt`
-     - Collect static files (WhiteNoise)
-     - Run database migrations
-     - Start the app with Gunicorn
+     - Run `python manage.py collectstatic --noinput`
+     - Run `python manage.py migrate` (migrations run automatically)
+     - Start app with Gunicorn: `gunicorn config.wsgi:application --bind 0.0.0.0:$PORT`
 
-5. **After first deployment, set up the database**:
+6. **After first deployment, set up database**:
    - Go to Render dashboard → Your service → "Shell"
    - Run these commands:
      ```bash
@@ -156,24 +180,49 @@ After running `seed_data`, you can log in with:
      ```
    - Follow prompts to create your admin user
 
-6. **Access your application**:
-   - Your app will be available at: `https://<your-service-name>.onrender.com`
-   - Admin panel: `https://<your-service-name>.onrender.com/admin/`
-   - Dashboard: `https://<your-service-name>.onrender.com/dashboard/`
+#### Ongoing Deployments
 
-### Environment Variables Summary
+**For Production**:
+- **Option A (Auto-deploy)**: Push to `main` branch → Render automatically deploys
+- **Option B (Manual)**: In Render dashboard, click "Deploy latest commit"
 
-| Variable | Required | Description | Example Value |
-|----------|----------|-------------|---------------|
-| `DJANGO_SECRET_KEY` | Yes | Django secret key for security | (generated string) |
-| `ALLOWED_HOSTS` | Yes | Your Render service URL | `yale-newcomer-survival-guide.onrender.com` |
-| `DEBUG` | No | Debug mode (set in render.yaml) | `False` |
+**For Staging** (once created):
+- Same process, but deploy to the staging service dashboard
+- Can point to a different branch if configured
+
+### Migrations
+
+Migrations are handled automatically:
+- **Build command**: Includes `python manage.py migrate` (see `render.yaml`)
+- Migrations run on every deployment
+- No manual migration steps required after initial setup
+
+### Logs
+
+- View deployment logs in Render dashboard → Your service → "Logs" tab
+- Application logs (stdout/stderr) are available in real-time
+- Use logs to troubleshoot deployment issues
+
+### 12-Factor Configuration
+
+This project follows 12-factor principles:
+
+- ✅ **Config via environment variables**: All sensitive settings (SECRET_KEY, DATABASE_URL, DEBUG) come from environment variables
+- ✅ **Database configured via DATABASE_URL**: Uses `dj-database_url` with SQLite fallback for local development
+- ✅ **No secrets in code**: All secrets are read from environment variables
+- ✅ **ALLOWED_HOSTS dynamically configured**: Automatically includes `RENDER_EXTERNAL_HOSTNAME`
+- ✅ **Static files via WhiteNoise**: Served automatically, no additional configuration needed
+- ✅ **Port binding**: Gunicorn binds to `$PORT` (provided by Render)
+
+**Local Development**: Uses SQLite and defaults to `DEBUG=True` via environment variable  
+**Production**: Uses PostgreSQL via `DATABASE_URL` and `DEBUG=False`
 
 ### Important Notes
 
-- **SQLite Database**: The database file will be stored in the Render filesystem. Note that Render's filesystem is ephemeral, so data may be lost on redeployments. For production, consider using a persistent database service later.
+- **PostgreSQL Database**: Production uses Render PostgreSQL, configured via `DATABASE_URL`. The database connection string is automatically provided by Render when you link a PostgreSQL service.
 - **Static Files**: WhiteNoise serves static files automatically - no additional configuration needed.
 - **Auto-Deploy**: The `render.yaml` is configured to auto-deploy from the `main` branch.
+- **Health Check**: Configured at `/admin/login/` (see `render.yaml`)
 
 ## URLs
 
