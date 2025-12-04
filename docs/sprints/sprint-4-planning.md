@@ -86,6 +86,16 @@ Deploy to production, finalize the A/B endpoint and analytics, complete the MVP 
 
 ---
 
+## 🌐 Environments
+
+- **Staging (Render):** https://yale-newcomer-survival-guide-staging.onrender.com/
+- **Production (Render):** https://yale-newcomer-survival-guide.onrender.com/
+- **Local development (optional):** http://127.0.0.1:8000 (for `python manage.py runserver`)
+
+Staging on Render is used for QA and testing new changes before deploying to production. Both staging and production use PostgreSQL and the same codebase (with different environment variables).
+
+---
+
 ## ⚠️ Dependencies & Risks
 
 | Risk | Impact | Mitigation |

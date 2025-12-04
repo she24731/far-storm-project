@@ -137,6 +137,11 @@ The following features are now **working in production** at https://yale-newcome
 
 ## 🚀 Production Deployment Status
 
+### Environments
+
+- **Staging (Render):** https://yale-newcomer-survival-guide-staging.onrender.com/
+- **Production (Render):** https://yale-newcomer-survival-guide.onrender.com/
+
 ### Production Environment
 - **URL:** https://yale-newcomer-survival-guide.onrender.com
 - **Platform:** Render Web Service
@@ -144,12 +149,23 @@ The following features are now **working in production** at https://yale-newcome
 - **Static Files:** Served via WhiteNoise
 - **DEBUG:** `False` in production
 
+### Staging Environment Verification
+
+- **Staging URL:** https://yale-newcomer-survival-guide-staging.onrender.com/
+- **Verified flows on staging:**
+  - User signup, login, logout
+  - Contributor creates a post → pending → admin approves → visible publicly
+  - Bookmarking flow
+  - A/B test endpoint at `/218b7ae/` (variants "kudos"/"thanks")
+- Staging uses the same Postgres schema as production (via DATABASE_URL), but with separate database instance or config.
+
 ### Configuration Verified
 - ✅ PostgreSQL connection via `dj_database_url.config()`
 - ✅ `ALLOWED_HOSTS` includes:
   - `127.0.0.1`
   - `localhost`
   - `yale-newcomer-survival-guide.onrender.com`
+  - `yale-newcomer-survival-guide-staging.onrender.com`
   - Auto-adds `RENDER_EXTERNAL_HOSTNAME` if provided
 - ✅ Environment variables configured:
   - `DJANGO_SECRET_KEY`

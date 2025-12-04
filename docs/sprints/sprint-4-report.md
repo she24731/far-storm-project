@@ -52,6 +52,19 @@ Deployment follows a streamlined process:
 - **Configuration:** 12-factor compliant, all secrets via environment variables
 - **Migrations:** Run automatically on every deployment
 
+### Environments
+
+- **Staging (Render):**  
+  https://yale-newcomer-survival-guide-staging.onrender.com/
+
+- **Production (Render):**  
+  https://yale-newcomer-survival-guide.onrender.com/
+
+- **Local development:**  
+  http://127.0.0.1:8000 (used with `python manage.py runserver` for fast iteration)
+
+Staging is used for testing new features, migrations, and A/B endpoint changes before promotion. Production is the environment used for the course traffic tests and final submission. Both staging and production use PostgreSQL configured via DATABASE_URL and share the same codebase from main.
+
 ---
 
 ## 3. A/B Test Endpoint & Analytics
@@ -190,16 +203,20 @@ The workflow that emerged: AI generates initial code and documentation, then the
 - Sprint 4 Report: `/docs/sprints/sprint-4-report.md` (this document)
 
 ### Project Resources
+- **GitHub Repository:** https://github.com/she24731/far-storm-project
 - **GitHub Project Board:** https://github.com/users/she24731/projects/6
-- **Production URL:** https://yale-newcomer-survival-guide.onrender.com
-- **A/B Test Endpoint:** https://yale-newcomer-survival-guide.onrender.com/218b7ae/
+- **Staging URL:** https://yale-newcomer-survival-guide-staging.onrender.com/
+- **Production URL:** https://yale-newcomer-survival-guide.onrender.com/
+- **A/B Test Endpoint (Production):** https://yale-newcomer-survival-guide.onrender.com/218b7ae/
 
-### Staging Environment
+### Local Development
 
-For local development/staging, run:
+For local development, run:
 ```bash
 python manage.py runserver
 ```
+
+Access at: http://127.0.0.1:8000
 
 Configure `.env` file with:
 - `DJANGO_SECRET_KEY` (development key)

@@ -33,6 +33,10 @@
    - Useful for documentation generation and formatting
    - Enabled faster iteration on features while maintaining quality
 
+### 5. **Effective Environment Separation**
+   - Having both a dedicated staging service on Render and a production service made it safer to test migrations, the A/B endpoint, and GA integration before exposing changes to real users.
+   - Clear separation between staging and production reduced risk when changing database config, auth, and A/B test behavior.
+
 ### 5. **Code Quality Infrastructure Established**
    - Coverage tooling configured and generating useful reports (69% overall, 100% on models)
    - Ruff linting catching issues early
@@ -157,6 +161,12 @@ Sprint 4 required focused effort from all team members:
 - **Denise** verified production deployment and provided critical QA
 
 The team's collaborative approach and shared commitment to quality made Sprint 4 a success. Ready for final submission!
+
+---
+
+### Environment Setup Reflection
+
+Staging on Render (https://yale-newcomer-survival-guide-staging.onrender.com/) was used for integration testing and QA. Production on Render (https://yale-newcomer-survival-guide.onrender.com/) is used for course traffic and final submission. Local development (`python manage.py runserver` at http://127.0.0.1:8000) was used for rapid iteration before pushing to staging. This separation helped reduce risk when changing database config, auth, and A/B test behavior. Having distinct environments allowed us to verify migrations, test A/B endpoint variants, and validate GA integration safely before promoting changes to production.
 
 ---
 
