@@ -120,7 +120,7 @@ After running `seed_data`, you can log in with:
 | `RENDER_EXTERNAL_HOSTNAME` | Auto | Render hostname | Auto-set by Render, added to `ALLOWED_HOSTS` |
 | `DJANGO_ADMIN_INITIAL_PASSWORD` | Optional | Initial admin password | (if using auto-admin setup) |
 
-**Note**: Google Analytics measurement ID (`G-9XJWT2P5LE`) is currently hardcoded in `templates/base.html`. This is acceptable as GA IDs are not sensitive.
+**Note**: Google Analytics measurement ID uses the `GA_MEASUREMENT_ID` environment variable (default: `G-9XJWT2P5LE` for this project). The GA tag is injected in `templates/base.html` via a context processor (`core.context_processors.google_analytics`). GA IDs are not sensitive, so the default value is acceptable.
 
 #### Staging
 

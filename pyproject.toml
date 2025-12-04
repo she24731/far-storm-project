@@ -10,6 +10,7 @@ exclude = [
     "staticfiles",
     "app_data",
     "db",
+    "verify_env_vars.py",
 ]
 
 [tool.ruff.lint]
@@ -20,4 +21,16 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "yale_newcomer_survival_guide/settings.py" = ["F401"]  # allow conditional imports
+
+[tool.coverage.run]
+source = ["core", "config"]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "config/asgi.py",
+    "config/wsgi.py",
+]
+
+[tool.coverage.report]
+show_missing = true
 
