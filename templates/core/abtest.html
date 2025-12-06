@@ -4,7 +4,7 @@
 
 {% block content %}
   <div class="container py-5">
-    <h1 class="mb-3">A/B Test - Team far-storm</h1>
+    <h1 class="mb-3">A/B Test – Team far-storm (debug v1)</h1>
     <p class="mb-3">
       This page is used for our A/B test on the button label.
       The button text is either <strong>kudos</strong> or <strong>thanks</strong>.
@@ -18,6 +18,11 @@
     </ul>
     
     <div class="mt-4">
+      {# TEMPORARY DEBUG BLOCK - Remove after confirming forced variant works #}
+      <pre id="debug" style="background: #f0f0f0; padding: 10px; border: 1px solid #ccc;">
+variant="{{ variant }}"
+      </pre>
+      
       <button id="abtest" class="btn btn-primary" data-variant="{{ variant }}">
         {{ variant }}
       </button>
@@ -28,26 +33,64 @@
   <script>
     (function() {
       const variant = "{{ variant }}";
+      const experiment = 'button_label_kudos_vs_thanks';
       const pagePath = "/218b7ae/";
       
+      // Helper function to get CSRF token from cookies
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+          const cookies = document.cookie.split(';');
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+              cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+      
       // GA snippet in base.html defines gtag(), so use it here.
+      // Event: ab_exposure (per specification)
       if (typeof gtag === "function") {
-        gtag('event', 'ab_variant_shown', {
-          'event_category': 'abtest',
-          'event_label': variant,
+        gtag('event', 'ab_exposure', {
+          'experiment': experiment,
           'variant': variant,
-          'page_path': pagePath
+          'endpoint': pagePath,
+          'event_category': 'abtest'
         });
       }
       
       const btn = document.getElementById('abtest');
-      if (btn && typeof gtag === "function") {
+      if (btn) {
         btn.addEventListener('click', function() {
-          gtag('event', 'ab_variant_clicked', {
-            'event_category': 'abtest',
-            'event_label': variant,
-            'variant': variant,
-            'page_path': pagePath
+          // Google Analytics tracking (client-side)
+          // Event: ab_button_click (per specification)
+          if (typeof gtag === "function") {
+            gtag('event', 'ab_button_click', {
+              'experiment': experiment,
+              'variant': variant,
+              'endpoint': pagePath,
+              'event_category': 'abtest',
+              'event_label': variant,
+              'page_title': document.title
+            });
+          }
+          
+          // Server-side logging (Django)
+          const csrftoken = getCookie('csrftoken');
+          fetch('/218b7ae/click/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'X-CSRFToken': csrftoken || ''
+            },
+            body: 'variant=' + encodeURIComponent(variant)
+          }).catch(function(err) {
+            // Silently fail if server-side logging fails
+            console.debug('A/B test click logging failed:', err);
           });
         });
       }

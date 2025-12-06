@@ -13,6 +13,7 @@ from core import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('218b7ae/', views.abtest_view, name='abtest'),  # A/B test endpoint for team far-storm
+    path('218b7ae/click/', views.abtest_click, name='abtest_click'),  # A/B test click logging endpoint
     path('', include('core.urls')),
 ]
 

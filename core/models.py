@@ -118,3 +118,41 @@ class ExternalLink(models.Model):
     def __str__(self):
         return self.title
 
+
+class ABTestEvent(models.Model):
+    """
+    Model to store A/B test events server-side for traffic split analysis.
+    
+    Tracks variant exposures and conversions for proper A/B test evaluation.
+    Matches the specification: ab_events table structure.
+    """
+    EVENT_TYPE_CHOICES = [
+        ('exposure', 'Variant Shown'),
+        ('conversion', 'Button Clicked'),  # Changed from 'click' to 'conversion' per spec
+    ]
+    
+    # Using experiment_name instead of experiment for clarity, but serves same purpose
+    experiment_name = models.CharField(max_length=100, db_index=True, help_text="Experiment identifier, e.g. 'button_label_kudos_vs_thanks'")
+    variant = models.CharField(max_length=20, db_index=True, help_text="Variant identifier, e.g. 'kudos' or 'thanks'")
+    event_type = models.CharField(max_length=20, choices=EVENT_TYPE_CHOICES, db_index=True)
+    endpoint = models.CharField(max_length=200, default='/218b7ae/', help_text="Endpoint path, e.g. '/218b7ae/'")
+    user_id = models.CharField(max_length=100, null=True, blank=True, db_index=True, help_text="User identifier if available (from Django User or session)")
+    session_id = models.CharField(max_length=100, db_index=True, help_text="Cookie-based session identifier")
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    is_forced = models.BooleanField(default=False, help_text="True if variant was forced via ?force_variant parameter")
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['experiment_name', 'variant', 'event_type']),
+            models.Index(fields=['experiment_name', 'created_at']),
+            models.Index(fields=['endpoint', 'event_type']),
+        ]
+        verbose_name = "AB Test Event"
+        verbose_name_plural = "AB Test Events"
+    
+    def __str__(self):
+        return f"{self.experiment_name} - {self.variant} - {self.event_type} ({self.created_at})"
+

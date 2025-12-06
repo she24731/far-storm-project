@@ -16,24 +16,28 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY SETTINGS
 # ============================================================================
 
-SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-dev-key-change-in-production-12345')
+SECRET_KEY = config("DJANGO_SECRET_KEY", default="django-insecure-dev-key-change-in-production")
 
-# DEBUG: Default to False for production safety
-# Set DEBUG=True in local .env file for local development
-DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+# DEBUG: prefer DJANGO_DEBUG, then DEBUG, default False
+DEBUG = os.getenv("DJANGO_DEBUG", os.getenv("DEBUG", "False")).lower() == "true"
 
-# ALLOWED_HOSTS: Support local development and Render production
-ALLOWED_HOSTS = [
-    '127.0.0.1',
-    'localhost',
-    'yale-newcomer-survival-guide.onrender.com',
-]
+# ALLOWED_HOSTS: use DJANGO_ALLOWED_HOSTS if provided (comma-separated), else sensible defaults
+allowed_hosts_env = os.getenv("DJANGO_ALLOWED_HOSTS")
+if allowed_hosts_env:
+    ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_env.split(",") if host.strip()]
+else:
+    ALLOWED_HOSTS = [
+        "127.0.0.1",
+        "localhost",
+        "yale-newcomer-survival-guide.onrender.com",
+    ]
 
-# Render automatically provides RENDER_EXTERNAL_HOSTNAME environment variable
-# This is a fallback in case the environment variable is set (adds it if not already in list)
+# Render automatically provides RENDER_EXTERNAL_HOSTNAME; append it if present
 RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
 if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
+GA_MEASUREMENT_ID = os.getenv("GA_MEASUREMENT_ID", "G-9XJWT2P5LE")
 
 # ============================================================================
 # APPLICATION DEFINITION
@@ -74,6 +78,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core.context_processors.google_analytics',
             ],
         },
     },

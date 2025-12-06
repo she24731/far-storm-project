@@ -13,6 +13,7 @@ from django.contrib import messages
 from django.db.models import Q
 from django.utils import timezone
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 import random
 from .models import Category, Post, Bookmark, ExternalLink
 from .forms import PostForm, UserRegistrationForm
@@ -406,7 +407,24 @@ def abtest_view(request):
     URL: /218b7ae/
     Publicly accessible, no authentication required.
     Shows team members and a button with variant text (kudos/thanks).
+    
+    A/B Test Logic:
+    - Variant assignment: Random 50/50 split on first visit, persisted via cookie
+    - Variant A: "kudos"
+    - Variant B: "thanks"
+    - Cookie name: "ab_variant" (30-day expiration)
+    
+    Debug Forcing (for manual QA only):
+    - ?force_variant=a → always show "kudos"
+    - ?force_variant=b → always show "thanks"
+    - Forced variants are logged but marked as is_forced=True
+    
+    Server-side logging:
+    - All variant exposures are logged to ABTestEvent model
+    - Experiment name: "button_label_kudos_vs_thanks"
     """
+    from .models import ABTestEvent
+    
     # Team information
     team_nickname = "far-storm"
     team_members = [
@@ -415,12 +433,65 @@ def abtest_view(request):
         "Denise Wu"
     ]
     
-    # Determine variant: check cookie first, then random
-    variant = request.COOKIES.get('ab_variant')
+    experiment_name = "button_label_kudos_vs_thanks"
+    is_forced = False
     
-    if variant not in ['kudos', 'thanks']:
-        # Randomly choose variant (50/50)
-        variant = random.choice(['kudos', 'thanks'])
+    # Debug forcing mechanism (for manual QA only)
+    # Check URL parameter FIRST to override cookie
+    force_param = request.GET.get('force_variant', '').strip().lower()
+    cookie_variant = request.COOKIES.get('ab_variant')
+    
+    if force_param == 'a':
+        variant = 'kudos'
+        is_forced = True
+    elif force_param == 'b':
+        variant = 'thanks'
+        is_forced = True
+    else:
+        # Normal A/B logic: check cookie only if no force parameter
+        variant = cookie_variant
+        
+        if variant not in ['kudos', 'thanks']:
+            # Randomly choose variant (50/50) if no cookie
+            variant = random.choice(['kudos', 'thanks'])
+    
+    # TEMPORARY DEBUG LOGGING - Remove after debugging
+    print("A/B DEBUG — force_param:", force_param)
+    print("A/B DEBUG — cookie_variant:", cookie_variant)
+    print("A/B DEBUG — final variant:", variant)
+    
+    # Get session identifier (use cookie if available, otherwise use IP)
+    session_id = request.COOKIES.get('ab_variant', '')
+    if not session_id:
+        # Generate a simple session ID from IP + user agent hash
+        import hashlib
+        session_data = f"{request.META.get('REMOTE_ADDR', '')}{request.META.get('HTTP_USER_AGENT', '')}"
+        session_id = hashlib.md5(session_data.encode()).hexdigest()[:16]
+    
+    # Get user_id if authenticated
+    user_id = None
+    if request.user.is_authenticated:
+        user_id = str(request.user.id)
+    
+    endpoint = '/218b7ae/'
+    
+    # Log variant exposure server-side (unless forced for QA)
+    if not is_forced:
+        try:
+            ABTestEvent.objects.create(
+                experiment_name=experiment_name,
+                variant=variant,
+                event_type='exposure',
+                endpoint=endpoint,
+                user_id=user_id,
+                session_id=session_id,
+                ip_address=request.META.get('REMOTE_ADDR'),
+                user_agent=request.META.get('HTTP_USER_AGENT', '')[:500],  # Limit length
+                is_forced=False,
+            )
+        except Exception:
+            # Silently fail if logging fails (don't break the page)
+            pass
     
     # Prepare context
     context = {
@@ -433,10 +504,62 @@ def abtest_view(request):
     response = render(request, 'core/abtest.html', context)
     
     # Set cookie if it doesn't exist (30 days expiration)
-    if 'ab_variant' not in request.COOKIES:
+    # Note: We still set cookie even for forced variants to maintain consistency
+    if 'ab_variant' not in request.COOKIES or is_forced:
         # 30 days = 30 * 24 * 60 * 60 seconds
         max_age = 30 * 24 * 60 * 60
         response.set_cookie('ab_variant', variant, max_age=max_age, httponly=False)
     
     return response
+
+
+@csrf_exempt
+def abtest_click(request):
+    """
+    Endpoint to log A/B test button clicks (conversions) server-side.
+    
+    URL: /218b7ae/click/
+    Called via AJAX when button is clicked.
+    CSRF exempt since this is a public analytics endpoint.
+    Logs as 'conversion' event type per specification.
+    """
+    from .models import ABTestEvent
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    variant = request.POST.get('variant', '')
+    if variant not in ['kudos', 'thanks']:
+        return JsonResponse({'error': 'Invalid variant'}, status=400)
+    
+    experiment_name = "button_label_kudos_vs_thanks"
+    endpoint = '/218b7ae/'
+    session_id = request.COOKIES.get('ab_variant', '')
+    
+    if not session_id:
+        # Generate session ID similar to abtest_view
+        import hashlib
+        session_data = f"{request.META.get('REMOTE_ADDR', '')}{request.META.get('HTTP_USER_AGENT', '')}"
+        session_id = hashlib.md5(session_data.encode()).hexdigest()[:16]
+    
+    # Get user_id if authenticated
+    user_id = None
+    if request.user.is_authenticated:
+        user_id = str(request.user.id)
+    
+    try:
+        ABTestEvent.objects.create(
+            experiment_name=experiment_name,
+            variant=variant,
+            event_type='conversion',  # Changed to 'conversion' per spec
+            endpoint=endpoint,
+            user_id=user_id,
+            session_id=session_id,
+            ip_address=request.META.get('REMOTE_ADDR'),
+            user_agent=request.META.get('HTTP_USER_AGENT', '')[:500],
+            is_forced=False,
+        )
+        return JsonResponse({'status': 'logged'})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
