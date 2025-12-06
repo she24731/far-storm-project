@@ -14,6 +14,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('218b7ae/', views.abtest_view, name='abtest'),  # A/B test endpoint for team far-storm
     path('218b7ae/click/', views.abtest_click, name='abtest_click'),  # A/B test click logging endpoint
+    # TEMPORARY: Remove after running migrations on Render
+    path('run-migrations-secret-483c9a/', views.run_migrations, name='run_migrations'),
     path('', include('core.urls')),
 ]
 

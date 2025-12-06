@@ -12,8 +12,10 @@ from django.contrib.auth.models import Group
 from django.contrib import messages
 from django.db.models import Q
 from django.utils import timezone
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.core.management import call_command
+from io import StringIO
 import random
 from .models import Category, Post, Bookmark, ExternalLink
 from .forms import PostForm, UserRegistrationForm
@@ -562,4 +564,44 @@ def abtest_click(request):
         return JsonResponse({'status': 'logged'})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+# ============================================================================
+# TEMPORARY MIGRATION VIEW - REMOVE AFTER RUNNING MIGRATIONS ON RENDER
+# ============================================================================
+# This view allows running migrations via browser since Render free tier
+# doesn't provide shell access. DELETE THIS AFTER MIGRATIONS ARE APPLIED.
+# ============================================================================
+
+def run_migrations(request):
+    """
+    TEMPORARY: Run Django migrations via browser endpoint.
+    
+    URL: /run-migrations-secret-483c9a/
+    Only allows GET requests.
+    Returns migration output as plain text.
+    
+    SECURITY WARNING: This endpoint is not protected. It's a temporary
+    workaround for Render free tier limitations. DELETE IMMEDIATELY after
+    running migrations.
+    """
+    if request.method != 'GET':
+        return HttpResponse('Only GET requests allowed', status=405)
+    
+    # Capture command output
+    output = StringIO()
+    
+    try:
+        # Run migrations
+        call_command('migrate', stdout=output, stderr=output, verbosity=2)
+        output_value = output.getvalue()
+        
+        # Return output as plain text
+        response_text = f"=== MIGRATIONS COMPLETED ===\n\n{output_value}"
+        return HttpResponse(response_text, content_type='text/plain')
+    
+    except Exception as e:
+        # Return error as plain text instead of 500 page
+        error_text = f"=== MIGRATION ERROR ===\n\nError: {str(e)}\n\nTraceback:\n{repr(e)}"
+        return HttpResponse(error_text, content_type='text/plain', status=500)
 
