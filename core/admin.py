@@ -3,7 +3,7 @@ Django admin configuration for core app.
 """
 
 from django.contrib import admin
-from .models import Category, Post, Bookmark, ExternalLink
+from .models import Category, Post, Bookmark, ExternalLink, ABTestEvent
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
@@ -39,4 +39,13 @@ class BookmarkAdmin(admin.ModelAdmin):
 class ExternalLinkAdmin(admin.ModelAdmin):
     list_display = ("title", "url", "category")
     search_fields = ("title", "url")
+
+@admin.register(ABTestEvent)
+class ABTestEventAdmin(admin.ModelAdmin):
+    list_display = ("experiment_name", "variant", "event_type", "endpoint", "session_id", "created_at", "is_forced")
+    list_filter = ("experiment_name", "variant", "event_type", "endpoint", "is_forced")
+    search_fields = ("session_id", "ip_address", "user_agent")
+    readonly_fields = ("created_at",)  # created_at is auto-set, make it readonly
+    list_per_page = 100  # Show more events per page
+    date_hierarchy = "created_at"  # Add date navigation
 
