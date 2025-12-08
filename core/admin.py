@@ -50,27 +50,27 @@ class ABTestEventAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at",)  # created_at is auto-set, make it readonly
     list_per_page = 100  # Show more events per page
     date_hierarchy = "created_at"  # Add date navigation
-    actions = ["normalize_event_types"]
     
-    def normalize_event_types(self, request, queryset):
+    def get_queryset(self, request):
         """
-        Admin action to normalize legacy event types to canonical values.
+        Automatically normalize legacy event_type values before returning queryset.
         Converts 'Variant Shown' → 'exposure' and 'Button Clicked' → 'conversion'.
+        This runs on each changelist load, but once everything is normalized,
+        the update calls will be no-ops and fast.
         """
-        updated_exposures = queryset.filter(event_type="Variant Shown").update(event_type="exposure")
-        updated_conversions = queryset.filter(event_type="Button Clicked").update(event_type="conversion")
-        total_updated = updated_exposures + updated_conversions
+        # First, normalize any legacy values in the database
+        legacy_exposure = ABTestEvent.objects.filter(event_type__iexact="Variant Shown")
+        legacy_conversion = ABTestEvent.objects.filter(event_type__iexact="Button Clicked")
         
-        if total_updated == 0:
-            self.message_user(request, "No legacy event types found to normalize.", level='info')
-        else:
-            self.message_user(
-                request,
-                f"Normalized {total_updated} AB test events "
-                f"({updated_exposures} exposures, {updated_conversions} conversions).",
-                level='success'
-            )
-    normalize_event_types.short_description = "Normalize legacy event types to exposure/conversion"
+        if legacy_exposure.exists():
+            legacy_exposure.update(event_type="exposure")
+        
+        if legacy_conversion.exists():
+            legacy_conversion.update(event_type="conversion")
+        
+        # Then return the normal queryset
+        qs = super().get_queryset(request)
+        return qs
 
     def get_urls(self):
         """Add custom URL for A/B test summary dashboard."""
