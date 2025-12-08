@@ -29,7 +29,7 @@
     (function() {
       const variant = "{{ variant }}";
       const experiment = "button_label_kudos_vs_thanks";
-      const pagePath = "/218b7ae/";
+      const endpoint = "/218b7ae/";
       
       // Helper function to get CSRF token from cookies
       function getCookie(name) {
@@ -47,34 +47,34 @@
         return cookieValue;
       }
       
-      // GA snippet in base.html defines gtag(), so use it here.
-      // Event: ab_exposure (per specification)
+      // Send one exposure event when the page is rendered
       if (typeof gtag === "function") {
-        gtag('event', 'ab_exposure', {
-          'experiment': experiment,
-          'variant': variant,
-          'endpoint': pagePath,
-          'event_category': 'abtest'
+        gtag("event", "ab_exposure", {
+          experiment: experiment,
+          variant: variant,
+          endpoint: endpoint,
+          event_label: "A/B exposure",
+          page_title: document.title,
+          page_location: window.location.href,
         });
       }
       
-      const btn = document.getElementById('abtest');
-      if (btn) {
-        btn.addEventListener('click', function() {
-          // Google Analytics tracking (client-side)
-          // Event: ab_button_click (per specification)
+      // Attach one click handler to the button
+      const button = document.getElementById("abtest");
+      if (button) {
+        button.addEventListener("click", function() {
           if (typeof gtag === "function") {
-            gtag('event', 'ab_button_click', {
-              'experiment': experiment,
-              'variant': variant,
-              'endpoint': pagePath,
-              'event_category': 'abtest',
-              'event_label': variant,
-              'page_title': document.title
+            gtag("event", "ab_button_click", {
+              experiment: experiment,
+              variant: variant,
+              endpoint: endpoint,
+              event_label: "A/B button click",
+              page_title: document.title,
+              page_location: window.location.href,
             });
           }
           
-          // Server-side logging (Django)
+          // Server-side logging (Django) - must remain intact
           const csrftoken = getCookie('csrftoken');
           fetch('/218b7ae/click/', {
             method: 'POST',

@@ -345,7 +345,7 @@ class ABTestPublicAccessTest(TestCase):
         self.assertEqual(response.status_code, 200)
         content = response.content.decode('utf-8')
         
-        # Check for gtag calls
-        self.assertIn("gtag('event', 'ab_exposure'", content)
-        self.assertIn("gtag('event', 'ab_button_click'", content)
-        self.assertIn("event_category': 'abtest'", content)
+        # Check for gtag calls (using double quotes as per updated template)
+        self.assertIn('gtag("event", "ab_exposure"', content)
+        self.assertIn('gtag("event", "ab_button_click"', content)
+        self.assertIn('experiment:', content)  # Check for experiment parameter
