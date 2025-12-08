@@ -50,6 +50,27 @@ class ABTestEventAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at",)  # created_at is auto-set, make it readonly
     list_per_page = 100  # Show more events per page
     date_hierarchy = "created_at"  # Add date navigation
+    actions = ["normalize_event_types"]
+    
+    def normalize_event_types(self, request, queryset):
+        """
+        Admin action to normalize legacy event types to canonical values.
+        Converts 'Variant Shown' → 'exposure' and 'Button Clicked' → 'conversion'.
+        """
+        updated_exposures = queryset.filter(event_type="Variant Shown").update(event_type="exposure")
+        updated_conversions = queryset.filter(event_type="Button Clicked").update(event_type="conversion")
+        total_updated = updated_exposures + updated_conversions
+        
+        if total_updated == 0:
+            self.message_user(request, "No legacy event types found to normalize.", level='info')
+        else:
+            self.message_user(
+                request,
+                f"Normalized {total_updated} AB test events "
+                f"({updated_exposures} exposures, {updated_conversions} conversions).",
+                level='success'
+            )
+    normalize_event_types.short_description = "Normalize legacy event types to exposure/conversion"
 
     def get_urls(self):
         """Add custom URL for A/B test summary dashboard."""
