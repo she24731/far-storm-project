@@ -1,11 +1,300 @@
 """
-Tests for A/B test endpoint.
+Comprehensive tests for A/B test implementation.
+
+Tests variant selection, event logging, and full user flows.
 """
 from django.test import TestCase, Client
+from core.models import ABTestEvent
 
 
-class ABTestViewTest(TestCase):
-    """Test cases for A/B test endpoint."""
+class ABTestVariantSelectionTest(TestCase):
+    """Test variant selection logic (force, cookie, random)."""
+    
+    def setUp(self):
+        """Set up test client."""
+        self.client = Client()
+        self.abtest_url = '/218b7ae/'
+    
+    def test_force_variant_a_overrides_cookie(self):
+        """Test that ?force_variant=a overrides existing cookie."""
+        # Set cookie to 'thanks'
+        self.client.cookies['ab_variant'] = 'thanks'
+        
+        # Request with force_variant=a
+        response = self.client.get(f'{self.abtest_url}?force_variant=a')
+        
+        self.assertEqual(response.status_code, 200)
+        
+        # Check context variant is 'kudos'
+        self.assertEqual(response.context['variant'], 'kudos')
+        
+        # Check cookie is set to 'kudos' (overridden)
+        self.assertEqual(response.cookies['ab_variant'].value, 'kudos')
+    
+    def test_force_variant_b_overrides_cookie(self):
+        """Test that ?force_variant=b overrides existing cookie."""
+        # Set cookie to 'kudos'
+        self.client.cookies['ab_variant'] = 'kudos'
+        
+        # Request with force_variant=b
+        response = self.client.get(f'{self.abtest_url}?force_variant=b')
+        
+        self.assertEqual(response.status_code, 200)
+        
+        # Check context variant is 'thanks'
+        self.assertEqual(response.context['variant'], 'thanks')
+        
+        # Check cookie is set to 'thanks' (overridden)
+        self.assertEqual(response.cookies['ab_variant'].value, 'thanks')
+    
+    def test_cookie_persists_variant(self):
+        """Test that cookie persists variant across requests."""
+        # First request without cookie or force param
+        response1 = self.client.get(self.abtest_url)
+        self.assertEqual(response1.status_code, 200)
+        
+        # Get variant from first response
+        variant1 = response1.context['variant']
+        self.assertIn(variant1, ['kudos', 'thanks'])
+        
+        # Get cookie value from first response
+        cookie_value = response1.cookies.get('ab_variant')
+        self.assertIsNotNone(cookie_value)
+        cookie_variant = cookie_value.value
+        
+        # Second request with cookie set (simulate browser behavior)
+        self.client.cookies['ab_variant'] = cookie_variant
+        response2 = self.client.get(self.abtest_url)
+        self.assertEqual(response2.status_code, 200)
+        
+        # Variant should be the same
+        variant2 = response2.context['variant']
+        self.assertEqual(variant1, variant2)
+        self.assertEqual(variant2, cookie_variant)
+    
+    def test_random_assignment_produces_both_variants_over_many_requests(self):
+        """Test that random assignment produces both variants over many requests."""
+        kudos_count = 0
+        thanks_count = 0
+        
+        # Make 50 requests without cookies or force param
+        for _ in range(50):
+            client = Client()  # New client each time (no cookies)
+            response = client.get(self.abtest_url)
+            self.assertEqual(response.status_code, 200)
+            
+            variant = response.context['variant']
+            if variant == 'kudos':
+                kudos_count += 1
+            elif variant == 'thanks':
+                thanks_count += 1
+        
+        # Both variants should appear
+        self.assertGreater(kudos_count, 0, "Should see at least one 'kudos' variant")
+        self.assertGreater(thanks_count, 0, "Should see at least one 'thanks' variant")
+        self.assertEqual(kudos_count + thanks_count, 50)
+
+
+class ABTestEventLoggingTest(TestCase):
+    """Test server-side event logging (exposure and conversion)."""
+    
+    def setUp(self):
+        """Set up test client and clear events."""
+        self.client = Client()
+        self.abtest_url = '/218b7ae/'
+        self.click_url = '/218b7ae/click/'
+        # Clear all events before each test
+        ABTestEvent.objects.all().delete()
+    
+    def test_exposure_event_logged_on_page_view(self):
+        """Test that exposure event is logged when page is viewed."""
+        # Clear events
+        self.assertEqual(ABTestEvent.objects.count(), 0)
+        
+        # GET the A/B test page with force_variant=a
+        response = self.client.get(f'{self.abtest_url}?force_variant=a')
+        self.assertEqual(response.status_code, 200)
+        
+        # Note: Forced variants don't log exposure events (see view code)
+        # So we need to test without force_variant
+        ABTestEvent.objects.all().delete()
+        
+        # GET without force_variant (normal flow)
+        response = self.client.get(self.abtest_url)
+        self.assertEqual(response.status_code, 200)
+        
+        # Should have exactly one exposure event
+        events = ABTestEvent.objects.all()
+        self.assertEqual(events.count(), 1)
+        
+        event = events.first()
+        self.assertEqual(event.experiment_name, 'button_label_kudos_vs_thanks')
+        self.assertIn(event.variant, ['kudos', 'thanks'])
+        self.assertEqual(event.event_type, 'exposure')
+        self.assertEqual(event.endpoint, '/218b7ae/')
+    
+    def test_conversion_event_logged_on_click_endpoint(self):
+        """Test that conversion event is logged when click endpoint is called."""
+        # Clear events
+        self.assertEqual(ABTestEvent.objects.count(), 0)
+        
+        # POST to click endpoint with variant='kudos'
+        # Django test client automatically handles form-urlencoded
+        response = self.client.post(
+            self.click_url,
+            data={'variant': 'kudos'}
+        )
+        
+        self.assertEqual(response.status_code, 200, 
+                        f"Expected 200, got {response.status_code}. Response: {response.content.decode()[:200]}")
+        
+        # Should have exactly one conversion event
+        events = ABTestEvent.objects.all()
+        self.assertEqual(events.count(), 1)
+        
+        event = events.first()
+        self.assertEqual(event.experiment_name, 'button_label_kudos_vs_thanks')
+        self.assertEqual(event.variant, 'kudos')
+        self.assertEqual(event.event_type, 'conversion')
+        self.assertEqual(event.endpoint, '/218b7ae/')
+    
+    def test_conversion_event_with_thanks_variant(self):
+        """Test conversion event logging with 'thanks' variant."""
+        # Clear events
+        self.assertEqual(ABTestEvent.objects.count(), 0)
+        
+        # POST to click endpoint with variant='thanks'
+        response = self.client.post(
+            self.click_url,
+            data={'variant': 'thanks'}
+        )
+        
+        self.assertEqual(response.status_code, 200,
+                        f"Expected 200, got {response.status_code}. Response: {response.content.decode()[:200]}")
+        
+        # Should have exactly one conversion event
+        events = ABTestEvent.objects.all()
+        self.assertEqual(events.count(), 1)
+        
+        event = events.first()
+        self.assertEqual(event.variant, 'thanks')
+        self.assertEqual(event.event_type, 'conversion')
+    
+    def test_click_endpoint_rejects_invalid_variant(self):
+        """Test that click endpoint rejects invalid variant."""
+        # POST with invalid variant
+        response = self.client.post(
+            self.click_url,
+            data={'variant': 'invalid'}
+        )
+        
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(ABTestEvent.objects.count(), 0)
+    
+    def test_click_endpoint_rejects_get_method(self):
+        """Test that click endpoint only accepts POST."""
+        response = self.client.get(self.click_url)
+        self.assertEqual(response.status_code, 405)
+        self.assertEqual(ABTestEvent.objects.count(), 0)
+
+
+class ABTestIntegrationTest(TestCase):
+    """Integration tests for full A/B test flow."""
+    
+    def setUp(self):
+        """Set up test client and clear events."""
+        self.client = Client()
+        self.abtest_url = '/218b7ae/'
+        self.click_url = '/218b7ae/click/'
+        ABTestEvent.objects.all().delete()
+    
+    def test_full_flow_exposure_then_conversion(self):
+        """Test full flow: exposure event on page view, then conversion on click."""
+        # Clear DB
+        self.assertEqual(ABTestEvent.objects.count(), 0)
+        
+        # Step 1: GET the A/B test page (no force param, no cookie)
+        response = self.client.get(self.abtest_url)
+        self.assertEqual(response.status_code, 200)
+        
+        # Get variant from response context
+        variant = response.context['variant']
+        self.assertIn(variant, ['kudos', 'thanks'])
+        
+        # Get cookie value
+        cookie_value = response.cookies.get('ab_variant').value
+        self.assertEqual(cookie_value, variant)
+        
+        # Should have exactly one exposure event
+        exposure_events = ABTestEvent.objects.filter(event_type='exposure')
+        self.assertEqual(exposure_events.count(), 1)
+        
+        exposure_event = exposure_events.first()
+        self.assertEqual(exposure_event.experiment_name, 'button_label_kudos_vs_thanks')
+        self.assertEqual(exposure_event.variant, variant)
+        self.assertEqual(exposure_event.event_type, 'exposure')
+        self.assertEqual(exposure_event.endpoint, '/218b7ae/')
+        
+        # Step 2: Simulate button click (POST to click endpoint)
+        # Set cookie for the click request
+        self.client.cookies['ab_variant'] = variant
+        
+        response_click = self.client.post(
+            self.click_url,
+            data={'variant': variant}
+        )
+        
+        self.assertEqual(response_click.status_code, 200,
+                        f"Expected 200, got {response_click.status_code}. Response: {response_click.content.decode()[:200]}")
+        
+        # Should now have exactly one exposure and one conversion
+        self.assertEqual(ABTestEvent.objects.count(), 2)
+        
+        conversion_events = ABTestEvent.objects.filter(event_type='conversion')
+        self.assertEqual(conversion_events.count(), 1)
+        
+        conversion_event = conversion_events.first()
+        self.assertEqual(conversion_event.experiment_name, 'button_label_kudos_vs_thanks')
+        self.assertEqual(conversion_event.variant, variant)
+        self.assertEqual(conversion_event.event_type, 'conversion')
+        self.assertEqual(conversion_event.endpoint, '/218b7ae/')
+        
+        # Both events should have the same variant
+        self.assertEqual(exposure_event.variant, conversion_event.variant)
+        self.assertEqual(exposure_event.experiment_name, conversion_event.experiment_name)
+    
+    def test_multiple_exposures_same_variant(self):
+        """Test that multiple page views with same cookie log multiple exposures."""
+        # First request
+        response1 = self.client.get(self.abtest_url)
+        variant1 = response1.context['variant']
+        
+        # Set cookie for subsequent requests
+        self.client.cookies['ab_variant'] = variant1
+        
+        # Second request (same cookie)
+        response2 = self.client.get(self.abtest_url)
+        variant2 = response2.context['variant']
+        
+        # Third request (same cookie)
+        response3 = self.client.get(self.abtest_url)
+        variant3 = response3.context['variant']
+        
+        # All should be the same variant
+        self.assertEqual(variant1, variant2)
+        self.assertEqual(variant2, variant3)
+        
+        # Should have 3 exposure events
+        exposure_events = ABTestEvent.objects.filter(event_type='exposure')
+        self.assertEqual(exposure_events.count(), 3)
+        
+        # All should have the same variant
+        for event in exposure_events:
+            self.assertEqual(event.variant, variant1)
+
+
+class ABTestPublicAccessTest(TestCase):
+    """Test that A/B test endpoint is publicly accessible."""
     
     def setUp(self):
         """Set up test client."""
@@ -34,7 +323,6 @@ class ABTestViewTest(TestCase):
         
         # Find the button and extract its text
         import re
-        # Look for the button element with id="abtest"
         button_match = re.search(r'<button[^>]*id="abtest"[^>]*>([^<]+)</button>', content)
         
         self.assertIsNotNone(button_match, "Button with id='abtest' not found")
@@ -43,68 +331,12 @@ class ABTestViewTest(TestCase):
         self.assertIn(button_text, ['kudos', 'thanks'], 
                      f"Button text '{button_text}' is not 'kudos' or 'thanks'")
     
-    def test_ab_variant_cookie_consistency(self):
-        """Test that variant is consistent via cookie across requests."""
-        # First request - should set cookie
-        response1 = self.client.get(self.abtest_url)
-        self.assertEqual(response1.status_code, 200)
-        
-        # Check that cookie was set
-        cookies = response1.cookies
-        self.assertIn('ab_variant', cookies)
-        
-        variant1 = cookies['ab_variant'].value
-        self.assertIn(variant1, ['kudos', 'thanks'])
-        
-        # Extract variant from response content
-        content1 = response1.content.decode('utf-8')
-        import re
-        button_match1 = re.search(r'<button[^>]*id="abtest"[^>]*>([^<]+)</button>', content1)
-        variant_from_content1 = button_match1.group(1).strip()
-        
-        # Second request with cookie - should use same variant
-        self.client.cookies['ab_variant'] = variant1
-        response2 = self.client.get(self.abtest_url)
-        self.assertEqual(response2.status_code, 200)
-        
-        content2 = response2.content.decode('utf-8')
-        button_match2 = re.search(r'<button[^>]*id="abtest"[^>]*>([^<]+)</button>', content2)
-        variant_from_content2 = button_match2.group(1).strip()
-        
-        # Variants should match
-        self.assertEqual(variant_from_content1, variant_from_content2)
-        self.assertEqual(variant_from_content2, variant1)
-    
     def test_abtest_view_uses_correct_template(self):
         """Test that A/B test view uses the correct template."""
         response = self.client.get(self.abtest_url)
         
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'core/abtest.html')
-    
-    def test_abtest_variant_random_distribution(self):
-        """Test that variants are randomly chosen (at least one of each in multiple requests)."""
-        variants_seen = set()
-        
-        # Make multiple requests without cookies to see different variants
-        for _ in range(20):
-            client = Client()  # New client each time (no cookies)
-            response = client.get(self.abtest_url)
-            self.assertEqual(response.status_code, 200)
-            
-            content = response.content.decode('utf-8')
-            import re
-            button_match = re.search(r'<button[^>]*id="abtest"[^>]*>([^<]+)</button>', content)
-            if button_match:
-                variant = button_match.group(1).strip()
-                variants_seen.add(variant)
-                
-                # Early exit if we've seen both variants
-                if len(variants_seen) == 2:
-                    break
-        
-        # We should have seen at least one variant (both if we're lucky)
-        self.assertGreater(len(variants_seen), 0)
     
     def test_abtest_analytics_script_present(self):
         """Test that analytics tracking script is present in the template."""
@@ -114,7 +346,6 @@ class ABTestViewTest(TestCase):
         content = response.content.decode('utf-8')
         
         # Check for gtag calls
-        self.assertIn("gtag('event', 'ab_variant_shown'", content)
-        self.assertIn("gtag('event', 'ab_variant_clicked'", content)
+        self.assertIn("gtag('event', 'ab_exposure'", content)
+        self.assertIn("gtag('event', 'ab_button_click'", content)
         self.assertIn("event_category': 'abtest'", content)
-
