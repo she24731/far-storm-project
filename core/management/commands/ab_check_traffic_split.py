@@ -49,7 +49,13 @@ class Command(BaseCommand):
             query &= Q(is_forced=False)
         
         if event_type != 'all':
-            query &= Q(event_type=event_type)
+            # Map event_type to support both old and new naming schemes
+            if event_type == 'exposure':
+                query &= Q(event_type__in=['exposure', 'Variant Shown'])
+            elif event_type == 'conversion':
+                query &= Q(event_type__in=['conversion', 'Button Clicked'])
+            else:
+                query &= Q(event_type=event_type)
 
         # Get counts per variant
         variant_counts = (
@@ -161,8 +167,10 @@ class Command(BaseCommand):
         
         # Click-through rate (if analyzing exposures, show CTR)
         if event_type == 'exposure' or event_type == 'all':
-            exposure_query = Q(experiment_name=experiment_name, event_type='exposure')
-            conversion_query = Q(experiment_name=experiment_name, event_type='conversion')
+            # Support both old ("Variant Shown") and new ("exposure") naming
+            exposure_query = Q(experiment_name=experiment_name, event_type__in=['exposure', 'Variant Shown'])
+            # Support both old ("Button Clicked") and new ("conversion") naming
+            conversion_query = Q(experiment_name=experiment_name, event_type__in=['conversion', 'Button Clicked'])
             
             if exclude_forced:
                 exposure_query &= Q(is_forced=False)

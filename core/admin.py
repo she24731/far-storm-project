@@ -91,17 +91,19 @@ class ABTestEventAdmin(admin.ModelAdmin):
             
             for variant in variants:
                 # Count impressions (exposure events)
+                # Support both old ("Variant Shown") and new ("exposure") naming
                 impressions = ABTestEvent.objects.filter(
                     experiment_name=exp_name,
                     variant=variant,
-                    event_type='exposure'
+                    event_type__in=['exposure', 'Variant Shown']
                 ).count()
                 
                 # Count conversions (conversion events)
+                # Support both old ("Button Clicked") and new ("conversion") naming
                 conversions = ABTestEvent.objects.filter(
                     experiment_name=exp_name,
                     variant=variant,
-                    event_type='conversion'
+                    event_type__in=['conversion', 'Button Clicked']
                 ).count()
                 
                 # Calculate conversion rate as percentage (0-100)

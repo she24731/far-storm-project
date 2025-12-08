@@ -428,9 +428,9 @@ def abtest_view(request):
     # Team information
     team_nickname = "far-storm"
     team_members = [
-        "Chun-Hung Yeh",
-        "Celine (Qijing) Li",
-        "Denise Wu"
+        "Chun-Hung Yeh ( stormy-deer )",
+        "Celine (Qijing) Li ( adorable-crow )",
+        "Denise Wu ( super-giraffe )",
     ]
     
     experiment_name = "button_label_kudos_vs_thanks"
