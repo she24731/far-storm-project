@@ -154,7 +154,7 @@ class PostModelTest(TestCase):
         # Most recently updated should be first
         self.assertEqual(posts[0], post2)
         self.assertEqual(posts[1], post1)
-    
+
     def test_auto_slug_generation_from_title(self):
         """Test that slug is automatically generated from title when not provided."""
         post = Post.objects.create(

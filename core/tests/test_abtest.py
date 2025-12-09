@@ -7,6 +7,20 @@ from django.test import TestCase, Client
 from core.models import ABTestEvent
 
 
+class ABTestEventModelTest(TestCase):
+    """Test ABTestEvent model constants and choices."""
+    
+    def test_only_two_event_types_defined(self):
+        """Test that only exposure and conversion event types are defined."""
+        choices = dict(ABTestEvent.EVENT_TYPE_CHOICES)
+        self.assertEqual(set(choices.keys()), {"exposure", "conversion"})
+    
+    def test_event_type_constants(self):
+        """Test that event type constants are correct."""
+        self.assertEqual(ABTestEvent.EVENT_TYPE_EXPOSURE, "exposure")
+        self.assertEqual(ABTestEvent.EVENT_TYPE_CONVERSION, "conversion")
+
+
 class ABTestVariantSelectionTest(TestCase):
     """Test variant selection logic (force, cookie, random)."""
     
@@ -130,7 +144,7 @@ class ABTestEventLoggingTest(TestCase):
         event = events.first()
         self.assertEqual(event.experiment_name, 'button_label_kudos_vs_thanks')
         self.assertIn(event.variant, ['kudos', 'thanks'])
-        self.assertEqual(event.event_type, 'exposure')
+        self.assertEqual(event.event_type, ABTestEvent.EVENT_TYPE_EXPOSURE)
         self.assertEqual(event.endpoint, '/218b7ae/')
     
     def test_conversion_event_logged_on_click_endpoint(self):
@@ -155,7 +169,7 @@ class ABTestEventLoggingTest(TestCase):
         event = events.first()
         self.assertEqual(event.experiment_name, 'button_label_kudos_vs_thanks')
         self.assertEqual(event.variant, 'kudos')
-        self.assertEqual(event.event_type, 'conversion')
+        self.assertEqual(event.event_type, ABTestEvent.EVENT_TYPE_CONVERSION)
         self.assertEqual(event.endpoint, '/218b7ae/')
     
     def test_conversion_event_with_thanks_variant(self):
@@ -178,7 +192,7 @@ class ABTestEventLoggingTest(TestCase):
         
         event = events.first()
         self.assertEqual(event.variant, 'thanks')
-        self.assertEqual(event.event_type, 'conversion')
+        self.assertEqual(event.event_type, ABTestEvent.EVENT_TYPE_CONVERSION)
     
     def test_click_endpoint_rejects_invalid_variant(self):
         """Test that click endpoint rejects invalid variant."""
@@ -226,13 +240,13 @@ class ABTestIntegrationTest(TestCase):
         self.assertEqual(cookie_value, variant)
         
         # Should have exactly one exposure event
-        exposure_events = ABTestEvent.objects.filter(event_type='exposure')
+        exposure_events = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE)
         self.assertEqual(exposure_events.count(), 1)
         
         exposure_event = exposure_events.first()
         self.assertEqual(exposure_event.experiment_name, 'button_label_kudos_vs_thanks')
         self.assertEqual(exposure_event.variant, variant)
-        self.assertEqual(exposure_event.event_type, 'exposure')
+        self.assertEqual(exposure_event.event_type, ABTestEvent.EVENT_TYPE_EXPOSURE)
         self.assertEqual(exposure_event.endpoint, '/218b7ae/')
         
         # Step 2: Simulate button click (POST to click endpoint)
@@ -250,13 +264,13 @@ class ABTestIntegrationTest(TestCase):
         # Should now have exactly one exposure and one conversion
         self.assertEqual(ABTestEvent.objects.count(), 2)
         
-        conversion_events = ABTestEvent.objects.filter(event_type='conversion')
+        conversion_events = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_CONVERSION)
         self.assertEqual(conversion_events.count(), 1)
         
         conversion_event = conversion_events.first()
         self.assertEqual(conversion_event.experiment_name, 'button_label_kudos_vs_thanks')
         self.assertEqual(conversion_event.variant, variant)
-        self.assertEqual(conversion_event.event_type, 'conversion')
+        self.assertEqual(conversion_event.event_type, ABTestEvent.EVENT_TYPE_CONVERSION)
         self.assertEqual(conversion_event.endpoint, '/218b7ae/')
         
         # Both events should have the same variant
@@ -285,7 +299,7 @@ class ABTestIntegrationTest(TestCase):
         self.assertEqual(variant2, variant3)
         
         # Should have 3 exposure events
-        exposure_events = ABTestEvent.objects.filter(event_type='exposure')
+        exposure_events = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE)
         self.assertEqual(exposure_events.count(), 3)
         
         # All should have the same variant

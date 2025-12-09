@@ -464,11 +464,6 @@ def abtest_view(request):
         session_data = f"{request.META.get('REMOTE_ADDR', '')}{request.META.get('HTTP_USER_AGENT', '')}"
         session_id = hashlib.md5(session_data.encode()).hexdigest()[:16]
     
-    # Get user_id if authenticated
-    user_id = None
-    if request.user.is_authenticated:
-        user_id = str(request.user.id)
-    
     endpoint = '/218b7ae/'
     
     # Log variant exposure server-side (unless forced for QA)
@@ -477,12 +472,12 @@ def abtest_view(request):
             ABTestEvent.objects.create(
                 experiment_name=experiment_name,
                 variant=variant,
-                event_type='exposure',
+                event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
                 endpoint=endpoint,
-                user_id=user_id,
                 session_id=session_id,
                 ip_address=request.META.get('REMOTE_ADDR'),
                 user_agent=request.META.get('HTTP_USER_AGENT', '')[:500],  # Limit length
+                user=request.user if request.user.is_authenticated else None,
                 is_forced=False,
             )
         except Exception:
@@ -538,21 +533,16 @@ def abtest_click(request):
         session_data = f"{request.META.get('REMOTE_ADDR', '')}{request.META.get('HTTP_USER_AGENT', '')}"
         session_id = hashlib.md5(session_data.encode()).hexdigest()[:16]
     
-    # Get user_id if authenticated
-    user_id = None
-    if request.user.is_authenticated:
-        user_id = str(request.user.id)
-    
     try:
         ABTestEvent.objects.create(
             experiment_name=experiment_name,
             variant=variant,
-            event_type='conversion',  # Changed to 'conversion' per spec
+            event_type=ABTestEvent.EVENT_TYPE_CONVERSION,
             endpoint=endpoint,
-            user_id=user_id,
             session_id=session_id,
             ip_address=request.META.get('REMOTE_ADDR'),
             user_agent=request.META.get('HTTP_USER_AGENT', '')[:500],
+            user=request.user if request.user.is_authenticated else None,
             is_forced=False,
         )
         return JsonResponse({'status': 'logged'})

@@ -25,7 +25,7 @@ class ABTestTrafficSplitCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='kudos',
-                event_type='exposure',
+                event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
                 endpoint='/218b7ae/',
                 session_id=f'session_kudos_{i}',
                 is_forced=False,
@@ -36,7 +36,7 @@ class ABTestTrafficSplitCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='thanks',
-                event_type='exposure',
+                event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
                 endpoint='/218b7ae/',
                 session_id=f'session_thanks_{i}',
                 is_forced=False,
@@ -64,7 +64,7 @@ class ABTestTrafficSplitCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='kudos',
-                event_type='exposure',
+                event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
                 endpoint='/218b7ae/',
                 session_id=f'session_kudos_{i}',
                 is_forced=False,
@@ -75,7 +75,7 @@ class ABTestTrafficSplitCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='thanks',
-                event_type='exposure',
+                event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
                 endpoint='/218b7ae/',
                 session_id=f'session_thanks_{i}',
                 is_forced=False,
@@ -104,7 +104,7 @@ class ABTestTrafficSplitCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='kudos',
-                event_type='exposure',
+                event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
                 endpoint='/218b7ae/',
                 session_id=f'session_kudos_{i}',
                 is_forced=False,
@@ -114,7 +114,7 @@ class ABTestTrafficSplitCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='thanks',
-                event_type='exposure',
+                event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
                 endpoint='/218b7ae/',
                 session_id=f'session_thanks_{i}',
                 is_forced=False,
@@ -125,7 +125,7 @@ class ABTestTrafficSplitCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='kudos',
-                event_type='conversion',
+                event_type=ABTestEvent.EVENT_TYPE_CONVERSION,
                 endpoint='/218b7ae/',
                 session_id=f'session_kudos_{i}',
                 is_forced=False,
@@ -135,7 +135,7 @@ class ABTestTrafficSplitCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='thanks',
-                event_type='conversion',
+                event_type=ABTestEvent.EVENT_TYPE_CONVERSION,
                 endpoint='/218b7ae/',
                 session_id=f'session_thanks_{i}',
                 is_forced=False,
@@ -169,7 +169,7 @@ class ABTestAnalyzeCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='kudos',
-                event_type='exposure',
+                event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
                 endpoint='/218b7ae/',
                 session_id=f'session_kudos_{i}',
                 is_forced=False,
@@ -180,7 +180,7 @@ class ABTestAnalyzeCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='kudos',
-                event_type='conversion',
+                event_type=ABTestEvent.EVENT_TYPE_CONVERSION,
                 endpoint='/218b7ae/',
                 session_id=f'session_kudos_{i}',
                 is_forced=False,
@@ -191,7 +191,7 @@ class ABTestAnalyzeCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='thanks',
-                event_type='exposure',
+                event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
                 endpoint='/218b7ae/',
                 session_id=f'session_thanks_{i}',
                 is_forced=False,
@@ -202,7 +202,7 @@ class ABTestAnalyzeCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='thanks',
-                event_type='conversion',
+                event_type=ABTestEvent.EVENT_TYPE_CONVERSION,
                 endpoint='/218b7ae/',
                 session_id=f'session_thanks_{i}',
                 is_forced=False,
@@ -257,7 +257,7 @@ class ABTestAnalyzeCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='kudos',
-                event_type='exposure',
+                event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
                 endpoint='/218b7ae/',
                 session_id=f'session_kudos_{i}',
                 is_forced=False,
@@ -283,7 +283,7 @@ class ABTestAnalyzeCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='kudos',
-                event_type='conversion',
+                event_type=ABTestEvent.EVENT_TYPE_CONVERSION,
                 endpoint='/218b7ae/',
                 session_id=f'session_kudos_{i}',
                 is_forced=False,
@@ -293,7 +293,7 @@ class ABTestAnalyzeCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='thanks',
-                event_type='conversion',
+                event_type=ABTestEvent.EVENT_TYPE_CONVERSION,
                 endpoint='/218b7ae/',
                 session_id=f'session_thanks_{i}',
                 is_forced=False,
@@ -320,7 +320,7 @@ class ABTestAnalyzeCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='kudos',
-                event_type='exposure',
+                event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
                 endpoint='/218b7ae/',
                 session_id=f'session_kudos_{i}',
                 is_forced=False,
@@ -328,7 +328,7 @@ class ABTestAnalyzeCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='thanks',
-                event_type='exposure',
+                event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
                 endpoint='/218b7ae/',
                 session_id=f'session_thanks_{i}',
                 is_forced=False,
@@ -339,7 +339,7 @@ class ABTestAnalyzeCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='kudos',
-                event_type='conversion',
+                event_type=ABTestEvent.EVENT_TYPE_CONVERSION,
                 endpoint='/218b7ae/',
                 session_id=f'session_kudos_{i}',
                 is_forced=False,
@@ -349,7 +349,7 @@ class ABTestAnalyzeCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='thanks',
-                event_type='conversion',
+                event_type=ABTestEvent.EVENT_TYPE_CONVERSION,
                 endpoint='/218b7ae/',
                 session_id=f'session_thanks_{i}',
                 is_forced=False,
@@ -376,7 +376,7 @@ class ABTestAnalyzeCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='kudos',
-                event_type='exposure',
+                event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
                 endpoint='/218b7ae/',
                 session_id=f'session_kudos_{i}',
                 is_forced=False,
@@ -386,7 +386,7 @@ class ABTestAnalyzeCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='kudos',
-                event_type='conversion',
+                event_type=ABTestEvent.EVENT_TYPE_CONVERSION,
                 endpoint='/218b7ae/',
                 session_id=f'session_kudos_{i}',
                 is_forced=False,
@@ -396,7 +396,7 @@ class ABTestAnalyzeCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='thanks',
-                event_type='exposure',
+                event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
                 endpoint='/218b7ae/',
                 session_id=f'session_thanks_{i}',
                 is_forced=False,
@@ -406,7 +406,7 @@ class ABTestAnalyzeCommandTest(TestCase):
             ABTestEvent.objects.create(
                 experiment_name=self.experiment_name,
                 variant='thanks',
-                event_type='conversion',
+                event_type=ABTestEvent.EVENT_TYPE_CONVERSION,
                 endpoint='/218b7ae/',
                 session_id=f'session_thanks_{i}',
                 is_forced=False,

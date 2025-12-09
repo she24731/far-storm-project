@@ -50,27 +50,6 @@ class ABTestEventAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at",)  # created_at is auto-set, make it readonly
     list_per_page = 100  # Show more events per page
     date_hierarchy = "created_at"  # Add date navigation
-    
-    def get_queryset(self, request):
-        """
-        Automatically normalize legacy event_type values before returning queryset.
-        Converts 'Variant Shown' → 'exposure' and 'Button Clicked' → 'conversion'.
-        This runs on each changelist load, but once everything is normalized,
-        the update calls will be no-ops and fast.
-        """
-        # First, normalize any legacy values in the database
-        legacy_exposure = ABTestEvent.objects.filter(event_type__iexact="Variant Shown")
-        legacy_conversion = ABTestEvent.objects.filter(event_type__iexact="Button Clicked")
-        
-        if legacy_exposure.exists():
-            legacy_exposure.update(event_type="exposure")
-        
-        if legacy_conversion.exists():
-            legacy_conversion.update(event_type="conversion")
-        
-        # Then return the normal queryset
-        qs = super().get_queryset(request)
-        return qs
 
     def get_urls(self):
         """Add custom URL for A/B test summary dashboard."""
@@ -112,19 +91,17 @@ class ABTestEventAdmin(admin.ModelAdmin):
             
             for variant in variants:
                 # Count impressions (exposure events)
-                # Support both old ("Variant Shown") and new ("exposure") naming
                 impressions = ABTestEvent.objects.filter(
                     experiment_name=exp_name,
                     variant=variant,
-                    event_type__in=['exposure', 'Variant Shown']
+                    event_type=ABTestEvent.EVENT_TYPE_EXPOSURE
                 ).count()
                 
                 # Count conversions (conversion events)
-                # Support both old ("Button Clicked") and new ("conversion") naming
                 conversions = ABTestEvent.objects.filter(
                     experiment_name=exp_name,
                     variant=variant,
-                    event_type__in=['conversion', 'Button Clicked']
+                    event_type=ABTestEvent.EVENT_TYPE_CONVERSION
                 ).count()
                 
                 # Calculate conversion rate as percentage (0-100)

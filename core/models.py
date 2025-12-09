@@ -126,20 +126,27 @@ class ABTestEvent(models.Model):
     Tracks variant exposures and conversions for proper A/B test evaluation.
     Matches the specification: ab_events table structure.
     """
+    EVENT_TYPE_EXPOSURE = "exposure"
+    EVENT_TYPE_CONVERSION = "conversion"
+    
     EVENT_TYPE_CHOICES = [
-        ('exposure', 'Variant Shown'),
-        ('conversion', 'Button Clicked'),  # Changed from 'click' to 'conversion' per spec
+        (EVENT_TYPE_EXPOSURE, "Exposure"),
+        (EVENT_TYPE_CONVERSION, "Conversion"),
     ]
     
     # Using experiment_name instead of experiment for clarity, but serves same purpose
     experiment_name = models.CharField(max_length=100, db_index=True, help_text="Experiment identifier, e.g. 'button_label_kudos_vs_thanks'")
     variant = models.CharField(max_length=20, db_index=True, help_text="Variant identifier, e.g. 'kudos' or 'thanks'")
-    event_type = models.CharField(max_length=20, choices=EVENT_TYPE_CHOICES, db_index=True)
+    event_type = models.CharField(
+        max_length=32,
+        choices=EVENT_TYPE_CHOICES,
+        db_index=True,
+    )
     endpoint = models.CharField(max_length=200, default='/218b7ae/', help_text="Endpoint path, e.g. '/218b7ae/'")
-    user_id = models.CharField(max_length=100, null=True, blank=True, db_index=True, help_text="User identifier if available (from Django User or session)")
     session_id = models.CharField(max_length=100, db_index=True, help_text="Cookie-based session identifier")
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True)
+    user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, help_text="Django User if authenticated")
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     is_forced = models.BooleanField(default=False, help_text="True if variant was forced via ?force_variant parameter")
     
