@@ -4,7 +4,8 @@ Django admin configuration for core app.
 
 from django.contrib import admin
 from django.urls import path
-from django.shortcuts import render
+from django.template.response import TemplateResponse
+from django.db.models import Count
 from .models import Category, Post, Bookmark, ExternalLink, ABTestEvent
 
 @admin.register(Category)
@@ -72,92 +73,112 @@ class ABTestEventAdmin(admin.ModelAdmin):
     def abtest_summary_view(self, request):
         """
         A/B test summary dashboard view.
-        Groups ABTestEvent data by experiment and variant, showing impressions,
-        conversions, conversion rates, and uplift.
+        
+        Uses a single aggregated query to efficiently fetch all counts.
+        Groups by experiment_name, variant, and event_type to avoid N+1 queries.
         Uses ONLY canonical event types: EVENT_TYPE_EXPOSURE and EVENT_TYPE_CONVERSION.
         """
-        experiments_data = {}
+        # Single aggregated query - no loops with filter().count()
+        qs = (
+            ABTestEvent.objects
+            .values("experiment_name", "variant", "event_type")
+            .annotate(count=Count("id"))
+        )
         
-        # Get all unique experiments
-        experiments = ABTestEvent.objects.values_list('experiment_name', flat=True).distinct()
+        # Build in-memory structure from aggregated results
+        experiments = {}
         
-        for exp_name in experiments:
-            variants_data = {}
+        for row in qs:
+            exp = row["experiment_name"]
+            variant = row["variant"]
+            etype = row["event_type"]
+            count = row["count"]
             
-            # Get all variants for this experiment
-            variants = ABTestEvent.objects.filter(
-                experiment_name=exp_name
-            ).values_list('variant', flat=True).distinct()
-            
-            for variant in variants:
-                # Count impressions (exposure events) - ONLY canonical type
-                impressions = ABTestEvent.objects.filter(
-                    experiment_name=exp_name,
-                    variant=variant,
-                    event_type=ABTestEvent.EVENT_TYPE_EXPOSURE
-                ).count()
-                
-                # Count conversions (conversion events) - ONLY canonical type
-                conversions = ABTestEvent.objects.filter(
-                    experiment_name=exp_name,
-                    variant=variant,
-                    event_type=ABTestEvent.EVENT_TYPE_CONVERSION
-                ).count()
-                
-                # Calculate conversion rate as percentage (0-100)
-                # If impressions == 0 → conversion_rate = 0 (NO division by zero)
-                if impressions > 0:
-                    conversion_rate = (conversions / impressions) * 100
-                else:
-                    conversion_rate = 0.0
-                
-                variants_data[variant] = {
-                    'variant': variant,
-                    'impressions': impressions,
-                    'conversions': conversions,
-                    'conversion_rate': conversion_rate,
+            # Initialize nested dicts if needed
+            if exp not in experiments:
+                experiments[exp] = {}
+            if variant not in experiments[exp]:
+                experiments[exp][variant] = {
+                    "impressions": 0,
+                    "conversions": 0,
                 }
             
-            # Calculate uplift for each variant vs baseline
-            if variants_data:
-                # Find the variant with the highest conversion rate (> 0) as baseline
-                # If all have 0, pick the first one
-                baseline_variant = None
-                baseline_rate = 0.0
-                
-                for variant_key, variant_info in variants_data.items():
-                    if variant_info['conversion_rate'] > baseline_rate:
-                        baseline_rate = variant_info['conversion_rate']
-                        baseline_variant = variant_key
-                
-                # If no variant has conversion_rate > 0, use first variant as baseline
-                if baseline_variant is None:
-                    baseline_variant = list(variants_data.keys())[0]
-                    baseline_rate = variants_data[baseline_variant]['conversion_rate']
-                
-                # Calculate uplift for each variant
-                for variant_key, variant_info in variants_data.items():
-                    if variant_key == baseline_variant:
-                        variant_info['uplift_vs_baseline'] = None  # Baseline has no uplift
-                    else:
-                        if baseline_rate > 0:
-                            # Uplift as percentage: ((variant_rate - baseline_rate) / baseline_rate * 100)
-                            uplift = ((variant_info['conversion_rate'] - baseline_rate) / baseline_rate) * 100
-                            variant_info['uplift_vs_baseline'] = uplift
-                        else:
-                            # If baseline_rate == 0 → uplift = "N/A" (represented as None)
-                            variant_info['uplift_vs_baseline'] = None
+            # Populate counts based on event type
+            if etype == ABTestEvent.EVENT_TYPE_EXPOSURE:
+                experiments[exp][variant]["impressions"] = count
+            elif etype == ABTestEvent.EVENT_TYPE_CONVERSION:
+                experiments[exp][variant]["conversions"] = count
+        
+        # Compute conversion rates and build summary data
+        summary_data = []
+        
+        for exp, variants in experiments.items():
+            if not variants:
+                continue
             
-            experiments_data[exp_name] = {
-                'name': exp_name,
-                'variants': list(variants_data.values()),
-            }
+            variant_items = list(variants.items())
+            
+            # Compute conversion rates
+            for variant_name, stats in variant_items:
+                impressions = stats.get("impressions", 0) or 0
+                conversions = stats.get("conversions", 0) or 0
+                
+                if impressions > 0:
+                    rate = conversions / impressions
+                else:
+                    rate = 0.0
+                
+                stats["conversion_rate"] = rate
+            
+            # Find baseline (variant with highest conversion_rate)
+            max_rate = max(v["conversion_rate"] for v in variants.values())
+            
+            if max_rate > 0:
+                # Actual baseline(s) - variants with highest rate
+                baselines = [
+                    name for name, s in variant_items
+                    if s["conversion_rate"] == max_rate
+                ]
+            else:
+                # All rates are 0 - pick first variant as baseline for display
+                baselines = [variant_items[0][0]]
+            
+            baseline_rate = max_rate  # Could be 0.0
+            
+            # Build summary rows with uplift calculations
+            for variant_name, stats in variant_items:
+                impressions = stats.get("impressions", 0) or 0
+                conversions = stats.get("conversions", 0) or 0
+                rate = stats.get("conversion_rate", 0.0) or 0.0
+                is_baseline = variant_name in baselines
+                
+                # Compute uplift display
+                if is_baseline:
+                    uplift_display = "Baseline"
+                else:
+                    if baseline_rate > 0:
+                        uplift_pct = (rate - baseline_rate) / baseline_rate * 100.0
+                        uplift_display = f"{uplift_pct:+.2f}%"
+                    else:
+                        uplift_display = "N/A"
+                
+                summary_data.append({
+                    "experiment_name": exp,
+                    "variant": variant_name,
+                    "impressions": impressions,
+                    "conversions": conversions,
+                    "conversion_rate": rate,
+                    "conversion_rate_display": f"{rate * 100:.2f}%",
+                    "uplift_display": uplift_display,
+                    "is_baseline": is_baseline,
+                })
         
-        context = {
-            'title': 'A/B Test Summary',
-            'experiments': list(experiments_data.values()),
-            'has_perm': request.user.has_perm('core.view_abtestevent'),
-        }
+        # Build context
+        context = dict(
+            self.admin_site.each_context(request),
+            title="A/B Test Summary",
+            summary_data=summary_data,
+        )
         
-        return render(request, 'admin/abtest_summary.html', context)
+        return TemplateResponse(request, "admin/abtest_summary.html", context)
 

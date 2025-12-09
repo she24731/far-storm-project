@@ -26,8 +26,8 @@ class ABTestAdminSummaryTest(TestCase):
         # Clear all events
         ABTestEvent.objects.all().delete()
     
-    def test_summary_with_valid_data(self):
-        """Test summary page with valid exposure and conversion data."""
+    def test_summary_with_two_variants(self):
+        """Test summary page with valid exposure and conversion data for both variants."""
         experiment_name = "button_label_kudos_vs_thanks"
         
         # Create exposure events for kudos
@@ -81,16 +81,26 @@ class ABTestAdminSummaryTest(TestCase):
         self.assertEqual(response.status_code, 200, 
                         f"Expected 200, got {response.status_code}. Response: {response.content.decode()[:500]}")
         
-        # Check content
+        # Check context has summary_data
+        self.assertIn('summary_data', response.context)
+        summary_data = response.context['summary_data']
+        self.assertGreater(len(summary_data), 0)
+        
+        # Check that both variants are present
+        variant_names = [row['variant'] for row in summary_data if row['experiment_name'] == experiment_name]
+        self.assertIn('kudos', variant_names)
+        self.assertIn('thanks', variant_names)
+        
+        # Check content in HTML
         content = response.content.decode('utf-8')
         self.assertIn(experiment_name, content)
         self.assertIn('kudos', content)
         self.assertIn('thanks', content)
-        self.assertIn('100', content)  # Impressions
-        self.assertIn('20', content)  # Conversions for kudos
-        self.assertIn('30', content)  # Conversions for thanks
+        # Check conversion rates appear (20.00% and 30.00%)
+        self.assertIn('20.00%', content)  # kudos: 20/100 = 20%
+        self.assertIn('30.00%', content)  # thanks: 30/100 = 30%
     
-    def test_summary_handles_zero_impressions(self):
+    def test_summary_with_zero_impressions(self):
         """Test summary page when only conversions exist (no exposures)."""
         experiment_name = "button_label_kudos_vs_thanks"
         
@@ -112,10 +122,22 @@ class ABTestAdminSummaryTest(TestCase):
         self.assertEqual(response.status_code, 200,
                         f"Expected 200, got {response.status_code}. Response: {response.content.decode()[:500]}")
         
+        # Check context
+        summary_data = response.context['summary_data']
+        kudos_row = next((r for r in summary_data if r['variant'] == 'kudos'), None)
+        self.assertIsNotNone(kudos_row)
+        self.assertEqual(kudos_row['impressions'], 0)
+        self.assertEqual(kudos_row['conversions'], 10)
+        self.assertEqual(kudos_row['conversion_rate'], 0.0)
+        self.assertEqual(kudos_row['conversion_rate_display'], '0.00%')
+        # Uplift should be "Baseline" (single variant) or "N/A"
+        self.assertIn(kudos_row['uplift_display'], ['Baseline', 'N/A'])
+        
         # Check content
         content = response.content.decode('utf-8')
         self.assertIn(experiment_name, content)
         self.assertIn('kudos', content)
+        self.assertIn('0.00%', content)  # Conversion rate should be 0.00%
     
     def test_summary_one_variant_only(self):
         """Test summary page when only one variant exists."""
@@ -154,7 +176,7 @@ class ABTestAdminSummaryTest(TestCase):
         self.assertIn(experiment_name, content)
         self.assertIn('kudos', content)
     
-    def test_summary_with_no_events(self):
+    def test_summary_no_events(self):
         """Test summary page when no events exist."""
         # GET the summary page
         response = self.client.get('/admin/core/abtestevent/abtest-summary/')
@@ -162,6 +184,10 @@ class ABTestAdminSummaryTest(TestCase):
         # Should not crash
         self.assertEqual(response.status_code, 200,
                         f"Expected 200, got {response.status_code}. Response: {response.content.decode()[:500]}")
+        
+        # Check context - summary_data should be empty list
+        self.assertIn('summary_data', response.context)
+        self.assertEqual(response.context['summary_data'], [])
         
         # Should show friendly message
         content = response.content.decode('utf-8')

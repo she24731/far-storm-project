@@ -14,52 +14,49 @@
 {% block content %}
 <h1>{{ title }}</h1>
 
-{% if experiments %}
-    {% for experiment in experiments %}
-        <div style="margin-bottom: 30px;">
-            <h2>{{ experiment.name }}</h2>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-                <thead>
-                    <tr style="background-color: #f5f5f5;">
-                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Variant</th>
-                        <th style="padding: 10px; text-align: right; border: 1px solid #ddd;">Impressions</th>
-                        <th style="padding: 10px; text-align: right; border: 1px solid #ddd;">Conversions</th>
-                        <th style="padding: 10px; text-align: right; border: 1px solid #ddd;">Conversion Rate</th>
-                        <th style="padding: 10px; text-align: right; border: 1px solid #ddd;">Uplift vs Baseline</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for variant in experiment.variants %}
-                        <tr>
-                            <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">{{ variant.variant }}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">{{ variant.impressions|floatformat:0 }}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">{{ variant.conversions|floatformat:0 }}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">
-                                {% if variant.impressions > 0 %}
-                                    {{ variant.conversion_rate|floatformat:2 }}%
-                                {% else %}
-                                    0.00%
-                                {% endif %}
-                            </td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">
-                                {% if variant.uplift_vs_baseline is None %}
-                                    <span style="color: #666;">N/A</span>
-                                {% else %}
-                                    {% if variant.uplift_vs_baseline >= 0 %}
-                                        <span style="color: #28a745;">+{{ variant.uplift_vs_baseline|floatformat:2 }}%</span>
-                                    {% else %}
-                                        <span style="color: #dc3545;">{{ variant.uplift_vs_baseline|floatformat:2 }}%</span>
-                                    {% endif %}
-                                {% endif %}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% endfor %}
+{% if summary_data %}
+    <table class="adminlist" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+        <thead>
+            <tr style="background-color: #f5f5f5;">
+                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Experiment</th>
+                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Variant</th>
+                <th style="padding: 10px; text-align: right; border: 1px solid #ddd;">Impressions</th>
+                <th style="padding: 10px; text-align: right; border: 1px solid #ddd;">Conversions</th>
+                <th style="padding: 10px; text-align: right; border: 1px solid #ddd;">Conversion Rate</th>
+                <th style="padding: 10px; text-align: right; border: 1px solid #ddd;">Uplift vs Baseline</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in summary_data %}
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;">{{ row.experiment_name }}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">
+                        {% if row.is_baseline %}
+                            <strong>{{ row.variant }}</strong> (baseline)
+                        {% else %}
+                            {{ row.variant }}
+                        {% endif %}
+                    </td>
+                    <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">{{ row.impressions }}</td>
+                    <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">{{ row.conversions }}</td>
+                    <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">{{ row.conversion_rate_display }}</td>
+                    <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">
+                        {% if row.uplift_display == "Baseline" %}
+                            <span style="color: #666; font-weight: bold;">{{ row.uplift_display }}</span>
+                        {% elif row.uplift_display == "N/A" %}
+                            <span style="color: #666;">{{ row.uplift_display }}</span>
+                        {% elif row.uplift_display|slice:":1" == "+" %}
+                            <span style="color: #28a745;">{{ row.uplift_display }}</span>
+                        {% else %}
+                            <span style="color: #dc3545;">{{ row.uplift_display }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 {% else %}
-    <p>No A/B test data available yet. Visit the <a href="{% url 'admin:core_abtestevent_changelist' %}">AB Test Events</a> page to see raw events.</p>
+    <p>No A/B test data available yet.</p>
 {% endif %}
 
 <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
