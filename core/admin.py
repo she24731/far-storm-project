@@ -74,8 +74,8 @@ class ABTestEventAdmin(admin.ModelAdmin):
         A/B test summary dashboard view.
         Groups ABTestEvent data by experiment and variant, showing impressions,
         conversions, conversion rates, and uplift.
+        Uses ONLY canonical event types: EVENT_TYPE_EXPOSURE and EVENT_TYPE_CONVERSION.
         """
-        # Query all events grouped by experiment_name and variant
         experiments_data = {}
         
         # Get all unique experiments
@@ -90,14 +90,14 @@ class ABTestEventAdmin(admin.ModelAdmin):
             ).values_list('variant', flat=True).distinct()
             
             for variant in variants:
-                # Count impressions (exposure events)
+                # Count impressions (exposure events) - ONLY canonical type
                 impressions = ABTestEvent.objects.filter(
                     experiment_name=exp_name,
                     variant=variant,
                     event_type=ABTestEvent.EVENT_TYPE_EXPOSURE
                 ).count()
                 
-                # Count conversions (conversion events)
+                # Count conversions (conversion events) - ONLY canonical type
                 conversions = ABTestEvent.objects.filter(
                     experiment_name=exp_name,
                     variant=variant,
@@ -105,7 +105,11 @@ class ABTestEventAdmin(admin.ModelAdmin):
                 ).count()
                 
                 # Calculate conversion rate as percentage (0-100)
-                conversion_rate = ((conversions / impressions) * 100) if impressions > 0 else 0.0
+                # If impressions == 0 → conversion_rate = 0 (NO division by zero)
+                if impressions > 0:
+                    conversion_rate = (conversions / impressions) * 100
+                else:
+                    conversion_rate = 0.0
                 
                 variants_data[variant] = {
                     'variant': variant,
@@ -114,14 +118,22 @@ class ABTestEventAdmin(admin.ModelAdmin):
                     'conversion_rate': conversion_rate,
                 }
             
-            # Calculate uplift for each variant vs the best variant (baseline)
+            # Calculate uplift for each variant vs baseline
             if variants_data:
-                # Find the variant with the highest conversion rate (baseline)
-                baseline_variant = max(
-                    variants_data.keys(),
-                    key=lambda v: variants_data[v]['conversion_rate']
-                )
-                baseline_rate = variants_data[baseline_variant]['conversion_rate']
+                # Find the variant with the highest conversion rate (> 0) as baseline
+                # If all have 0, pick the first one
+                baseline_variant = None
+                baseline_rate = 0.0
+                
+                for variant_key, variant_info in variants_data.items():
+                    if variant_info['conversion_rate'] > baseline_rate:
+                        baseline_rate = variant_info['conversion_rate']
+                        baseline_variant = variant_key
+                
+                # If no variant has conversion_rate > 0, use first variant as baseline
+                if baseline_variant is None:
+                    baseline_variant = list(variants_data.keys())[0]
+                    baseline_rate = variants_data[baseline_variant]['conversion_rate']
                 
                 # Calculate uplift for each variant
                 for variant_key, variant_info in variants_data.items():
@@ -129,10 +141,11 @@ class ABTestEventAdmin(admin.ModelAdmin):
                         variant_info['uplift_vs_baseline'] = None  # Baseline has no uplift
                     else:
                         if baseline_rate > 0:
-                            # Uplift as percentage (multiply by 100 to show as percentage points)
+                            # Uplift as percentage: ((variant_rate - baseline_rate) / baseline_rate * 100)
                             uplift = ((variant_info['conversion_rate'] - baseline_rate) / baseline_rate) * 100
                             variant_info['uplift_vs_baseline'] = uplift
                         else:
+                            # If baseline_rate == 0 → uplift = "N/A" (represented as None)
                             variant_info['uplift_vs_baseline'] = None
             
             experiments_data[exp_name] = {
