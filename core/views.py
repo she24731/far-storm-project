@@ -434,37 +434,8 @@ def abtest_view(request):
     ]
     
     experiment_name = "button_label_kudos_vs_thanks"
-    is_forced = False
-    
-    # Debug forcing mechanism (for manual QA only)
-    # Check URL parameter FIRST to override cookie
-    force_param = request.GET.get('force_variant', '').strip().lower()
-    cookie_variant = request.COOKIES.get('ab_variant')
-    
-    if force_param == 'a':
-        variant = 'kudos'
-        is_forced = True
-    elif force_param == 'b':
-        variant = 'thanks'
-        is_forced = True
-    else:
-        # Normal A/B logic: check cookie only if no force parameter
-        variant = cookie_variant
-        
-        if variant not in ['kudos', 'thanks']:
-            # Randomly choose variant (50/50) if no cookie
-            variant = random.choice(['kudos', 'thanks'])
-    
-    
-    # Get session identifier (use cookie if available, otherwise use IP)
-    session_id = request.COOKIES.get('ab_variant', '')
-    if not session_id:
-        # Generate a simple session ID from IP + user agent hash
-        import hashlib
-        session_data = f"{request.META.get('REMOTE_ADDR', '')}{request.META.get('HTTP_USER_AGENT', '')}"
-        session_id = hashlib.md5(session_data.encode()).hexdigest()[:16]
-    
     endpoint = '/218b7ae/'
+    is_forced = False
     
     # Helper function to detect bot requests
     def is_bot_request(request):
@@ -490,41 +461,75 @@ def abtest_view(request):
         
         return False
     
-    # Check for bot requests and skip exposure logging
-    should_log_exposure = not is_forced
+    # Ensure session has a session_key
+    if not request.session.session_key:
+        request.session.save()
+    
+    # Check for bot requests - if bot, skip variant assignment and logging
+    is_bot = is_bot_request(request)
+    is_admin = request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)
+    
+    # Debug forcing mechanism (for manual QA only)
+    # Check URL parameter FIRST to override session
+    force_param = request.GET.get('force_variant', '').strip().lower()
+    
+    if force_param == 'a':
+        variant = 'kudos'
+        is_forced = True
+    elif force_param == 'b':
+        variant = 'thanks'
+        is_forced = True
+    elif is_bot or is_admin:
+        # Bots and admins: show a default variant but don't log
+        variant = 'kudos'  # Default for display only
+    else:
+        # Normal A/B logic: use session-based assignment
+        session_variant_key = f"abexp:{experiment_name}:variant"
+        variant = request.session.get(session_variant_key)
+        
+        if variant not in ['kudos', 'thanks']:
+            # First visit: randomly assign variant (50/50 split)
+            variant = random.choice(['kudos', 'thanks'])
+            request.session[session_variant_key] = variant
+            request.session.modified = True
+    
+    # Log variant exposure server-side (only for real users, once per session)
+    should_log_exposure = not is_forced and not is_bot and not is_admin and request.session.session_key
     
     if should_log_exposure:
-        # Block bots
-        if is_bot_request(request):
-            should_log_exposure = False
+        # Deduplication: Check session flag first (fast path)
+        session_exposed_key = f"abexp:{experiment_name}:exposed"
+        already_exposed_in_session = request.session.get(session_exposed_key, False)
         
-        # Block admin users
-        if request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser):
-            should_log_exposure = False
+        # Double-check with database (safe path)
+        session_id = request.session.session_key
+        exposure_exists = ABTestEvent.objects.filter(
+            experiment_name=experiment_name,
+            endpoint=endpoint,
+            session_id=session_id,
+            event_type=ABTestEvent.EVENT_TYPE_EXPOSURE
+        ).exists()
         
-        # Block requests with no session (bots don't accept cookies)
-        if not request.session.session_key:
-            request.session.save()
-            if not request.session.session_key:
-                should_log_exposure = False
-    
-    # Log variant exposure server-side (only if all checks pass)
-    if should_log_exposure:
-        try:
-            ABTestEvent.objects.create(
-                experiment_name=experiment_name,
-                variant=variant,
-                event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
-                endpoint=endpoint,
-                session_id=session_id,
-                ip_address=request.META.get('REMOTE_ADDR'),
-                user_agent=request.META.get('HTTP_USER_AGENT', '')[:500],  # Limit length
-                user=request.user if request.user.is_authenticated else None,
-                is_forced=False,
-            )
-        except Exception:
-            # Silently fail if logging fails (don't break the page)
-            pass
+        # Only log if we haven't logged before (both checks must pass)
+        if not already_exposed_in_session and not exposure_exists:
+            try:
+                ABTestEvent.objects.create(
+                    experiment_name=experiment_name,
+                    variant=variant,
+                    event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
+                    endpoint=endpoint,
+                    session_id=session_id,
+                    ip_address=request.META.get('REMOTE_ADDR'),
+                    user_agent=request.META.get('HTTP_USER_AGENT', '')[:500],  # Limit length
+                    user=request.user if request.user.is_authenticated else None,
+                    is_forced=False,
+                )
+                # Mark as exposed in session to prevent future duplicates
+                request.session[session_exposed_key] = True
+                request.session.modified = True
+            except Exception:
+                # Silently fail if logging fails (don't break the page)
+                pass
     
     # Prepare context
     context = {
@@ -536,8 +541,8 @@ def abtest_view(request):
     # Render template
     response = render(request, 'core/abtest.html', context)
     
-    # Set cookie if it doesn't exist (30 days expiration)
-    # Note: We still set cookie even for forced variants to maintain consistency
+    # Legacy cookie support (for backwards compatibility with existing cookies)
+    # Still set cookie for client-side JS, but variant comes from session
     if 'ab_variant' not in request.COOKIES or is_forced:
         # 30 days = 30 * 24 * 60 * 60 seconds
         max_age = 30 * 24 * 60 * 60
@@ -555,15 +560,15 @@ def abtest_click(request):
     Called via AJAX when button is clicked.
     CSRF exempt since this is a public analytics endpoint.
     Logs as 'conversion' event type per specification.
+    
+    The variant used MUST come from the session's assigned variant, NOT from
+    untrusted POST data, to ensure consistency with the exposure event.
     """
     from .models import ABTestEvent
+    import random
     
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
-    
-    variant = request.POST.get('variant', '')
-    if variant not in ['kudos', 'thanks']:
-        return JsonResponse({'error': 'Invalid variant'}, status=400)
     
     # Helper function to detect bot requests (same as abtest_view)
     def is_bot_request(request):
@@ -589,36 +594,31 @@ def abtest_click(request):
         
         return False
     
-    # Check for bot requests and skip conversion logging
-    should_log_conversion = True
-    
-    # Block bots
-    if is_bot_request(request):
-        should_log_conversion = False
-    
-    # Block admin users
-    if request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser):
-        should_log_conversion = False
-    
-    # Block requests with no session (bots don't accept cookies)
-    if not request.session.session_key:
-        request.session.save()
-        if not request.session.session_key:
-            should_log_conversion = False
-    
-    # If bot detected, return success but don't log
-    if not should_log_conversion:
-        return JsonResponse({'status': 'skipped'})
-    
     experiment_name = "button_label_kudos_vs_thanks"
     endpoint = '/218b7ae/'
-    session_id = request.COOKIES.get('ab_variant', '')
     
-    if not session_id:
-        # Generate session ID similar to abtest_view
-        import hashlib
-        session_data = f"{request.META.get('REMOTE_ADDR', '')}{request.META.get('HTTP_USER_AGENT', '')}"
-        session_id = hashlib.md5(session_data.encode()).hexdigest()[:16]
+    # Ensure session has a session_key
+    if not request.session.session_key:
+        request.session.save()
+    
+    # Check for bot requests and skip conversion logging
+    is_bot = is_bot_request(request)
+    is_admin = request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)
+    
+    if is_bot or is_admin or not request.session.session_key:
+        return JsonResponse({'status': 'skipped'})
+    
+    # Get variant from session (not from untrusted POST data)
+    session_variant_key = f"abexp:{experiment_name}:variant"
+    variant = request.session.get(session_variant_key)
+    
+    # Option A: If no variant assigned, assign one using same logic as abtest_view
+    if variant not in ['kudos', 'thanks']:
+        variant = random.choice(['kudos', 'thanks'])
+        request.session[session_variant_key] = variant
+        request.session.modified = True
+    
+    session_id = request.session.session_key
     
     try:
         ABTestEvent.objects.create(

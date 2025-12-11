@@ -4,6 +4,7 @@ Comprehensive tests for A/B test implementation.
 Tests variant selection, event logging, and full user flows.
 """
 from django.test import TestCase, Client
+from unittest.mock import patch
 from core.models import ABTestEvent
 
 
@@ -22,79 +23,103 @@ class ABTestEventModelTest(TestCase):
 
 
 class ABTestVariantSelectionTest(TestCase):
-    """Test variant selection logic (force, cookie, random)."""
+    """Test variant selection logic (force, session, random)."""
     
     def setUp(self):
         """Set up test client."""
         self.client = Client()
         self.abtest_url = '/218b7ae/'
+        self.browser_ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     
-    def test_force_variant_a_overrides_cookie(self):
-        """Test that ?force_variant=a overrides existing cookie."""
-        # Set cookie to 'thanks'
-        self.client.cookies['ab_variant'] = 'thanks'
+    def test_force_variant_a_overrides_session(self):
+        """Test that ?force_variant=a overrides session assignment."""
+        # First assign a variant via normal flow
+        response1 = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
+        session_variant = response1.context['variant']
         
-        # Request with force_variant=a
-        response = self.client.get(f'{self.abtest_url}?force_variant=a')
+        # Request with force_variant=a should override to 'kudos'
+        response = self.client.get(f'{self.abtest_url}?force_variant=a', HTTP_USER_AGENT=self.browser_ua)
         
         self.assertEqual(response.status_code, 200)
         
-        # Check context variant is 'kudos'
+        # Check context variant is 'kudos' (forced)
         self.assertEqual(response.context['variant'], 'kudos')
-        
-        # Check cookie is set to 'kudos' (overridden)
-        self.assertEqual(response.cookies['ab_variant'].value, 'kudos')
     
-    def test_force_variant_b_overrides_cookie(self):
-        """Test that ?force_variant=b overrides existing cookie."""
-        # Set cookie to 'kudos'
-        self.client.cookies['ab_variant'] = 'kudos'
+    def test_force_variant_b_overrides_session(self):
+        """Test that ?force_variant=b overrides session assignment."""
+        # First assign a variant via normal flow
+        response1 = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
         
-        # Request with force_variant=b
-        response = self.client.get(f'{self.abtest_url}?force_variant=b')
+        # Request with force_variant=b should override to 'thanks'
+        response = self.client.get(f'{self.abtest_url}?force_variant=b', HTTP_USER_AGENT=self.browser_ua)
         
         self.assertEqual(response.status_code, 200)
         
-        # Check context variant is 'thanks'
+        # Check context variant is 'thanks' (forced)
         self.assertEqual(response.context['variant'], 'thanks')
-        
-        # Check cookie is set to 'thanks' (overridden)
-        self.assertEqual(response.cookies['ab_variant'].value, 'thanks')
     
-    def test_cookie_persists_variant(self):
-        """Test that cookie persists variant across requests."""
-        # First request without cookie or force param
-        response1 = self.client.get(self.abtest_url)
+    def test_session_persists_variant(self):
+        """Test that session persists variant across requests."""
+        # First request without force param
+        response1 = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
         self.assertEqual(response1.status_code, 200)
         
         # Get variant from first response
         variant1 = response1.context['variant']
         self.assertIn(variant1, ['kudos', 'thanks'])
         
-        # Get cookie value from first response
-        cookie_value = response1.cookies.get('ab_variant')
-        self.assertIsNotNone(cookie_value)
-        cookie_variant = cookie_value.value
-        
-        # Second request with cookie set (simulate browser behavior)
-        self.client.cookies['ab_variant'] = cookie_variant
-        response2 = self.client.get(self.abtest_url)
+        # Second request (same session) - should keep same variant
+        response2 = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
         self.assertEqual(response2.status_code, 200)
         
         # Variant should be the same
         variant2 = response2.context['variant']
-        self.assertEqual(variant1, variant2)
-        self.assertEqual(variant2, cookie_variant)
+        self.assertEqual(variant1, variant2, "Session should persist variant across requests")
+    
+    @patch('core.views.random.choice')
+    def test_session_assignment_uses_random_choice(self, mock_choice):
+        """Test that first visit uses random.choice for 50/50 assignment."""
+        # Mock random.choice to return 'kudos'
+        mock_choice.return_value = 'kudos'
+        
+        # First request - should use mocked random.choice
+        response = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['variant'], 'kudos')
+        mock_choice.assert_called_once_with(['kudos', 'thanks'])
+        
+        # Second request - should NOT call random.choice again (uses session)
+        mock_choice.reset_mock()
+        response2 = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
+        self.assertEqual(response2.status_code, 200)
+        self.assertEqual(response2.context['variant'], 'kudos')
+        mock_choice.assert_not_called()  # Should use session, not random
+    
+    @patch('core.views.random.choice')
+    def test_session_assignment_random_choice_returns_thanks(self, mock_choice):
+        """Test that random.choice returning 'thanks' is stored in session."""
+        # Mock random.choice to return 'thanks'
+        mock_choice.return_value = 'thanks'
+        
+        # First request
+        response = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['variant'], 'thanks')
+        
+        # Verify it's stored in session by checking a second request
+        response2 = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
+        self.assertEqual(response2.context['variant'], 'thanks')
     
     def test_random_assignment_produces_both_variants_over_many_requests(self):
         """Test that random assignment produces both variants over many requests."""
         kudos_count = 0
         thanks_count = 0
         
-        # Make 50 requests without cookies or force param
+        # Make 50 requests with new clients (new sessions) each time
         for _ in range(50):
-            client = Client()  # New client each time (no cookies)
-            response = client.get(self.abtest_url)
+            client = Client()  # New client = new session
+            browser_ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            response = client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
             self.assertEqual(response.status_code, 200)
             
             variant = response.context['variant']
@@ -154,60 +179,93 @@ class ABTestEventLoggingTest(TestCase):
         # Clear events
         self.assertEqual(ABTestEvent.objects.count(), 0)
         
-        # POST to click endpoint with variant='kudos' - with browser User-Agent
-        # Django test client automatically handles form-urlencoded
+        # First, assign a variant via GET request (creates session assignment)
+        with patch('core.views.random.choice', return_value='kudos'):
+            response_get = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
+            self.assertEqual(response_get.status_code, 200)
+        
+        # POST to click endpoint - variant comes from session, not POST data
         response = self.client.post(
             self.click_url,
-            data={'variant': 'kudos'},
+            data={},  # No variant in POST - uses session variant
             HTTP_USER_AGENT=self.browser_ua
         )
         
         self.assertEqual(response.status_code, 200, 
                         f"Expected 200, got {response.status_code}. Response: {response.content.decode()[:200]}")
         
-        # Should have exactly one conversion event
+        # Should have one exposure (from GET) and one conversion (from POST)
         events = ABTestEvent.objects.all()
-        self.assertEqual(events.count(), 1)
+        self.assertEqual(events.count(), 2)  # One exposure + one conversion
         
-        event = events.first()
-        self.assertEqual(event.experiment_name, 'button_label_kudos_vs_thanks')
-        self.assertEqual(event.variant, 'kudos')
-        self.assertEqual(event.event_type, ABTestEvent.EVENT_TYPE_CONVERSION)
-        self.assertEqual(event.endpoint, '/218b7ae/')
+        # Find the conversion event
+        conversion_event = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_CONVERSION).first()
+        self.assertIsNotNone(conversion_event)
+        self.assertEqual(conversion_event.experiment_name, 'button_label_kudos_vs_thanks')
+        self.assertEqual(conversion_event.variant, 'kudos')  # Should match session variant from GET
+        self.assertEqual(conversion_event.event_type, ABTestEvent.EVENT_TYPE_CONVERSION)
+        self.assertEqual(conversion_event.endpoint, '/218b7ae/')
     
     def test_conversion_event_with_thanks_variant(self):
         """Test conversion event logging with 'thanks' variant."""
         # Clear events
         self.assertEqual(ABTestEvent.objects.count(), 0)
         
-        # POST to click endpoint with variant='thanks' - with browser User-Agent
+        # First, assign 'thanks' variant via GET request (creates session assignment)
+        with patch('core.views.random.choice', return_value='thanks'):
+            response_get = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
+            self.assertEqual(response_get.status_code, 200)
+            self.assertEqual(response_get.context['variant'], 'thanks')
+        
+        # POST to click endpoint - variant comes from session, not POST data
         response = self.client.post(
             self.click_url,
-            data={'variant': 'thanks'},
+            data={},  # No variant in POST - uses session variant
             HTTP_USER_AGENT=self.browser_ua
         )
         
         self.assertEqual(response.status_code, 200,
                         f"Expected 200, got {response.status_code}. Response: {response.content.decode()[:200]}")
         
-        # Should have exactly one conversion event
+        # Should have one exposure (from GET) and one conversion (from POST)
         events = ABTestEvent.objects.all()
-        self.assertEqual(events.count(), 1)
+        self.assertEqual(events.count(), 2)  # One exposure + one conversion
         
-        event = events.first()
-        self.assertEqual(event.variant, 'thanks')
-        self.assertEqual(event.event_type, ABTestEvent.EVENT_TYPE_CONVERSION)
+        # Find the conversion event
+        conversion_event = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_CONVERSION).first()
+        self.assertIsNotNone(conversion_event)
+        self.assertEqual(conversion_event.variant, 'thanks')  # Should match session variant from GET
+        self.assertEqual(conversion_event.event_type, ABTestEvent.EVENT_TYPE_CONVERSION)
     
-    def test_click_endpoint_rejects_invalid_variant(self):
-        """Test that click endpoint rejects invalid variant."""
-        # POST with invalid variant
-        response = self.client.post(
+    def test_click_endpoint_uses_session_variant_not_post_data(self):
+        """Test that click endpoint uses session variant, ignoring untrusted POST data."""
+        browser_ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        
+        # First, assign a variant via GET request
+        response = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
+        session_variant = response.context['variant']
+        self.assertIn(session_variant, ['kudos', 'thanks'])
+        
+        # Now POST with a DIFFERENT variant in POST data - should use session variant, not POST data
+        wrong_variant = 'thanks' if session_variant == 'kudos' else 'kudos'
+        response_click = self.client.post(
             self.click_url,
-            data={'variant': 'invalid'}
+            data={'variant': wrong_variant},  # Wrong variant in POST data
+            HTTP_USER_AGENT=browser_ua
         )
         
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(ABTestEvent.objects.count(), 0)
+        # Should succeed (200) because variant comes from session, not POST
+        self.assertEqual(response_click.status_code, 200)
+        
+        # Check that conversion event uses the SESSION variant, not the POST variant
+        conversion_events = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_CONVERSION)
+        self.assertEqual(conversion_events.count(), 1)
+        
+        conversion_event = conversion_events.first()
+        self.assertEqual(conversion_event.variant, session_variant, 
+                        "Conversion should use session variant, not untrusted POST data")
+        self.assertNotEqual(conversion_event.variant, wrong_variant,
+                           "Conversion should NOT use the wrong variant from POST data")
     
     def test_click_endpoint_rejects_get_method(self):
         """Test that click endpoint only accepts POST."""
@@ -256,12 +314,11 @@ class ABTestIntegrationTest(TestCase):
         self.assertEqual(exposure_event.endpoint, '/218b7ae/')
         
         # Step 2: Simulate button click (POST to click endpoint)
-        # Set cookie for the click request
-        self.client.cookies['ab_variant'] = variant
+        # Session is already set from the GET request, so variant should come from session
         
         response_click = self.client.post(
             self.click_url,
-            data={'variant': variant},
+            data={},  # Don't send variant in POST - it should come from session
             HTTP_USER_AGENT=self.browser_ua
         )
         
@@ -284,33 +341,43 @@ class ABTestIntegrationTest(TestCase):
         self.assertEqual(exposure_event.variant, conversion_event.variant)
         self.assertEqual(exposure_event.experiment_name, conversion_event.experiment_name)
     
-    def test_multiple_exposures_same_variant(self):
-        """Test that multiple page views with same cookie log multiple exposures."""
+    def test_no_multiple_exposures_same_session(self):
+        """Test that multiple page views in same session log only ONE exposure."""
         browser_ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        # First request
+        
+        # First request - should log one exposure
         response1 = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
         variant1 = response1.context['variant']
+        self.assertIn(variant1, ['kudos', 'thanks'])
         
-        # Set cookie for subsequent requests
-        self.client.cookies['ab_variant'] = variant1
+        # Should have exactly one exposure event
+        exposure_count_1 = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count()
+        self.assertEqual(exposure_count_1, 1)
         
-        # Second request (same cookie)
+        # Second request (same session) - should NOT log another exposure
         response2 = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
         variant2 = response2.context['variant']
         
-        # Third request (same cookie)
+        # Variant should be the same
+        self.assertEqual(variant1, variant2)
+        
+        # Should still have exactly one exposure event (no duplicate)
+        exposure_count_2 = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count()
+        self.assertEqual(exposure_count_2, 1, "Second page view should not create duplicate exposure")
+        
+        # Third request (same session) - should still NOT log another exposure
         response3 = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
         variant3 = response3.context['variant']
         
-        # All should be the same variant
-        self.assertEqual(variant1, variant2)
-        self.assertEqual(variant2, variant3)
+        # Variant should still be the same
+        self.assertEqual(variant1, variant3)
         
-        # Should have 3 exposure events
+        # Should still have exactly one exposure event
+        exposure_count_3 = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count()
+        self.assertEqual(exposure_count_3, 1, "Third page view should not create duplicate exposure")
+        
+        # All exposure events should have the same variant
         exposure_events = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE)
-        self.assertEqual(exposure_events.count(), 3)
-        
-        # All should have the same variant
         for event in exposure_events:
             self.assertEqual(event.variant, variant1)
 
