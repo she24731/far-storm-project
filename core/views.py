@@ -466,8 +466,50 @@ def abtest_view(request):
     
     endpoint = '/218b7ae/'
     
-    # Log variant exposure server-side (unless forced for QA)
-    if not is_forced:
+    # Helper function to detect bot requests
+    def is_bot_request(request):
+        """Check if request is from a bot or uptime checker."""
+        ua = request.META.get("HTTP_USER_AGENT", "").lower()
+        
+        # Block known bot/uptime check user agents
+        bot_keywords = [
+            "go-http-client", "render", "uptime", "health", "curl",
+            "python", "bot", "spider", "crawler", "scraper"
+        ]
+        if any(bad in ua for bad in bot_keywords):
+            return True
+        
+        # Block requests without User-Agent
+        if not request.META.get("HTTP_USER_AGENT"):
+            return True
+        
+        # Block non-browser clients - must contain browser keywords
+        real_browser_keywords = ["mozilla", "chrome", "safari", "firefox", "edge"]
+        if not any(k in ua for k in real_browser_keywords):
+            return True
+        
+        return False
+    
+    # Check for bot requests and skip exposure logging
+    should_log_exposure = not is_forced
+    
+    if should_log_exposure:
+        # Block bots
+        if is_bot_request(request):
+            should_log_exposure = False
+        
+        # Block admin users
+        if request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser):
+            should_log_exposure = False
+        
+        # Block requests with no session (bots don't accept cookies)
+        if not request.session.session_key:
+            request.session.save()
+            if not request.session.session_key:
+                should_log_exposure = False
+    
+    # Log variant exposure server-side (only if all checks pass)
+    if should_log_exposure:
         try:
             ABTestEvent.objects.create(
                 experiment_name=experiment_name,
@@ -522,6 +564,51 @@ def abtest_click(request):
     variant = request.POST.get('variant', '')
     if variant not in ['kudos', 'thanks']:
         return JsonResponse({'error': 'Invalid variant'}, status=400)
+    
+    # Helper function to detect bot requests (same as abtest_view)
+    def is_bot_request(request):
+        """Check if request is from a bot or uptime checker."""
+        ua = request.META.get("HTTP_USER_AGENT", "").lower()
+        
+        # Block known bot/uptime check user agents
+        bot_keywords = [
+            "go-http-client", "render", "uptime", "health", "curl",
+            "python", "bot", "spider", "crawler", "scraper"
+        ]
+        if any(bad in ua for bad in bot_keywords):
+            return True
+        
+        # Block requests without User-Agent
+        if not request.META.get("HTTP_USER_AGENT"):
+            return True
+        
+        # Block non-browser clients - must contain browser keywords
+        real_browser_keywords = ["mozilla", "chrome", "safari", "firefox", "edge"]
+        if not any(k in ua for k in real_browser_keywords):
+            return True
+        
+        return False
+    
+    # Check for bot requests and skip conversion logging
+    should_log_conversion = True
+    
+    # Block bots
+    if is_bot_request(request):
+        should_log_conversion = False
+    
+    # Block admin users
+    if request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser):
+        should_log_conversion = False
+    
+    # Block requests with no session (bots don't accept cookies)
+    if not request.session.session_key:
+        request.session.save()
+        if not request.session.session_key:
+            should_log_conversion = False
+    
+    # If bot detected, return success but don't log
+    if not should_log_conversion:
+        return JsonResponse({'status': 'skipped'})
     
     experiment_name = "button_label_kudos_vs_thanks"
     endpoint = '/218b7ae/'
