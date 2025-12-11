@@ -117,6 +117,8 @@ class ABTestEventLoggingTest(TestCase):
         self.client = Client()
         self.abtest_url = '/218b7ae/'
         self.click_url = '/218b7ae/click/'
+        # Browser User-Agent for tests (to pass bot filtering)
+        self.browser_ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         # Clear all events before each test
         ABTestEvent.objects.all().delete()
     
@@ -133,8 +135,8 @@ class ABTestEventLoggingTest(TestCase):
         # So we need to test without force_variant
         ABTestEvent.objects.all().delete()
         
-        # GET without force_variant (normal flow)
-        response = self.client.get(self.abtest_url)
+        # GET without force_variant (normal flow) - with browser User-Agent
+        response = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
         self.assertEqual(response.status_code, 200)
         
         # Should have exactly one exposure event
@@ -152,11 +154,12 @@ class ABTestEventLoggingTest(TestCase):
         # Clear events
         self.assertEqual(ABTestEvent.objects.count(), 0)
         
-        # POST to click endpoint with variant='kudos'
+        # POST to click endpoint with variant='kudos' - with browser User-Agent
         # Django test client automatically handles form-urlencoded
         response = self.client.post(
             self.click_url,
-            data={'variant': 'kudos'}
+            data={'variant': 'kudos'},
+            HTTP_USER_AGENT=self.browser_ua
         )
         
         self.assertEqual(response.status_code, 200, 
@@ -177,10 +180,11 @@ class ABTestEventLoggingTest(TestCase):
         # Clear events
         self.assertEqual(ABTestEvent.objects.count(), 0)
         
-        # POST to click endpoint with variant='thanks'
+        # POST to click endpoint with variant='thanks' - with browser User-Agent
         response = self.client.post(
             self.click_url,
-            data={'variant': 'thanks'}
+            data={'variant': 'thanks'},
+            HTTP_USER_AGENT=self.browser_ua
         )
         
         self.assertEqual(response.status_code, 200,
@@ -227,8 +231,8 @@ class ABTestIntegrationTest(TestCase):
         # Clear DB
         self.assertEqual(ABTestEvent.objects.count(), 0)
         
-        # Step 1: GET the A/B test page (no force param, no cookie)
-        response = self.client.get(self.abtest_url)
+        # Step 1: GET the A/B test page (no force param, no cookie) - with browser User-Agent
+        response = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
         self.assertEqual(response.status_code, 200)
         
         # Get variant from response context
@@ -255,7 +259,8 @@ class ABTestIntegrationTest(TestCase):
         
         response_click = self.client.post(
             self.click_url,
-            data={'variant': variant}
+            data={'variant': variant},
+            HTTP_USER_AGENT=self.browser_ua
         )
         
         self.assertEqual(response_click.status_code, 200,
@@ -279,19 +284,20 @@ class ABTestIntegrationTest(TestCase):
     
     def test_multiple_exposures_same_variant(self):
         """Test that multiple page views with same cookie log multiple exposures."""
+        browser_ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         # First request
-        response1 = self.client.get(self.abtest_url)
+        response1 = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
         variant1 = response1.context['variant']
         
         # Set cookie for subsequent requests
         self.client.cookies['ab_variant'] = variant1
         
         # Second request (same cookie)
-        response2 = self.client.get(self.abtest_url)
+        response2 = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
         variant2 = response2.context['variant']
         
         # Third request (same cookie)
-        response3 = self.client.get(self.abtest_url)
+        response3 = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
         variant3 = response3.context['variant']
         
         # All should be the same variant
