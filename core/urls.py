@@ -6,6 +6,7 @@ Defines all URL patterns for the application.
 
 from django.urls import path
 from . import views
+from . import views_admin_tools
 
 app_name = 'core'
 
@@ -31,6 +32,18 @@ urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),
     path('dashboard/approve/<int:post_id>/', views.approve_post, name='approve_post'),
     path('dashboard/reject/<int:post_id>/', views.reject_post, name='reject_post'),
+    
+    # Admin tools (no shell on Render)
+    path(
+        'admin-tools/ab-purge-bots/dry-run/',
+        views_admin_tools.ab_purge_bots_dry_run,
+        name='ab_purge_bots_dry_run',
+    ),
+    path(
+        'admin-tools/ab-purge-bots/run/',
+        views_admin_tools.ab_purge_bots_run,
+        name='ab_purge_bots_run',
+    ),
     
     # Authentication
     path('signup/', views.signup, name='signup'),
