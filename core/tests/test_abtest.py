@@ -224,6 +224,8 @@ class ABTestIntegrationTest(TestCase):
         self.client = Client()
         self.abtest_url = '/218b7ae/'
         self.click_url = '/218b7ae/click/'
+        # Browser User-Agent for tests (to pass bot filtering)
+        self.browser_ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         ABTestEvent.objects.all().delete()
     
     def test_full_flow_exposure_then_conversion(self):
