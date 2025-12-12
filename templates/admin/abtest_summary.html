@@ -1,20 +1,7 @@
 {% extends "admin/base_site.html" %}
-{% load static %}
-
-{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
-
-{% block breadcrumbs %}
-<div class="breadcrumbs">
-    <a href="{% url 'admin:index' %}">Home</a>
-    &rsaquo; <a href="{% url 'admin:core_abtestevent_changelist' %}">AB Test Events</a>
-    &rsaquo; {{ title }}
-</div>
-{% endblock %}
-
 {% block content %}
+<h1>A/B Test Summary</h1>
 <div id="content-main">
-  <h1>{{ title }}</h1>
-  {# REMOVE ANY OTHER <h1> A/B Test Summary #}
 
 {% if summary_data %}
     <table class="adminlist" style="width: 100%; border-collapse: collapse; margin-top: 10px;">

@@ -18,13 +18,7 @@
     </ul>
     
     <div class="mt-4">
-      <button id="abtest" class="btn btn-primary">
-        {% if variant == "kudos" %}
-          kudos
-        {% else %}
-          thanks
-        {% endif %}
-      </button>
+      <button id="abtest-btn" class="btn btn-primary">{{ variant }}</button>
     </div>
   </div>
   
@@ -33,9 +27,9 @@
     (function() {
       const variant = "{{ variant }}";
       const experiment = "button_label_kudos_vs_thanks";
-      const endpoint = "/218b7ae/";
+      const endpoint = "/{{ endpoint_hash }}/";
       
-      // Helper function to get CSRF token from cookies
+      // Helper function to get CSRF token
       function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -51,49 +45,33 @@
         return cookieValue;
       }
       
-      // Send one exposure event when the page is rendered
-      if (typeof gtag === "function") {
-        gtag("event", "ab_exposure", {
-          experiment: experiment,
-          variant: variant,
-          endpoint: endpoint,
-          event_label: "A/B exposure",
-          page_title: document.title,
-          page_location: window.location.href,
-        });
-      }
-      
-      // Attach one click handler to the button
-      const button = document.getElementById("abtest");
-      if (button) {
-        button.addEventListener("click", function() {
-          if (typeof gtag === "function") {
-            gtag("event", "ab_button_click", {
-              experiment: experiment,
-              variant: variant,
-              endpoint: endpoint,
-              event_label: "A/B button click",
-              page_title: document.title,
-              page_location: window.location.href,
-            });
-          }
-          
-          // Server-side logging (Django) - must remain intact
-          // Note: Variant is determined server-side from session, not from POST body
-          const csrftoken = getCookie('csrftoken');
-          fetch('/218b7ae/click/', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-              'X-CSRFToken': csrftoken || ''
-            },
-            body: ''  // No variant in body - server uses session
-          }).catch(function(err) {
-            // Silently fail if server-side logging fails
-            console.debug('A/B test click logging failed:', err);
+      // Attach click handler to the button
+      document.getElementById("abtest-btn").addEventListener("click", function() {
+        // Google Analytics event (client-side only)
+        if (typeof gtag === "function") {
+          gtag("event", "ab_button_click", {
+            experiment: experiment,
+            variant: variant,
+            endpoint: endpoint,
+            event_label: "A/B button click",
+            page_title: document.title,
+            page_location: window.location.href,
           });
+        }
+        
+        // Server-side logging (Django) - logs both exposure (first time) and conversion
+        const csrftoken = getCookie('csrftoken');
+        fetch("/{{ endpoint_hash }}/click/", {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": csrftoken || '',
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        }).catch(function(err) {
+          // Silently fail if server-side logging fails
+          console.debug('A/B test click logging failed:', err);
         });
-      }
+      });
     })();
   </script>
 {% endblock %}

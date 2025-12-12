@@ -38,31 +38,32 @@ class ABTestVariantSelectionTest(TestCase):
         }
     
     def test_force_variant_a_overrides_session(self):
-        """Test that ?force_variant=a overrides session assignment."""
+        """Test that variant is assigned via session (force_variant removed)."""
         # First assign a variant via normal flow
         response1 = self.client.get(self.abtest_url, **self.nav_headers)
         session_variant = response1.context['variant']
         
-        # Request with force_variant=a should override to 'kudos'
-        response = self.client.get(f'{self.abtest_url}?force_variant=a', **self.nav_headers)
+        # Second request should use same variant from session
+        response = self.client.get(self.abtest_url, **self.nav_headers)
         
         self.assertEqual(response.status_code, 200)
         
-        # Check context variant is 'kudos' (forced)
-        self.assertEqual(response.context['variant'], 'kudos')
+        # Check context variant is same as first request (session-based)
+        self.assertEqual(response.context['variant'], session_variant)
     
     def test_force_variant_b_overrides_session(self):
-        """Test that ?force_variant=b overrides session assignment."""
+        """Test that variant persists in session (force_variant removed)."""
         # First assign a variant via normal flow
         response1 = self.client.get(self.abtest_url, **self.nav_headers)
+        variant1 = response1.context['variant']
         
-        # Request with force_variant=b should override to 'thanks'
-        response = self.client.get(f'{self.abtest_url}?force_variant=b', **self.nav_headers)
+        # Second request should use same variant from session
+        response = self.client.get(self.abtest_url, **self.nav_headers)
         
         self.assertEqual(response.status_code, 200)
         
-        # Check context variant is 'thanks' (forced)
-        self.assertEqual(response.context['variant'], 'thanks')
+        # Variant should remain the same (session-based)
+        self.assertEqual(response.context['variant'], variant1)
     
     def test_session_persists_variant(self):
         """Test that session persists variant across requests."""
@@ -169,95 +170,83 @@ class ABTestEventLoggingTest(TestCase):
         # Clear all events before each test
         ABTestEvent.objects.all().delete()
     
-    def test_exposure_event_logged_on_page_view(self):
-        """Test that exposure event is logged when page is viewed."""
+    def test_exposure_event_not_logged_on_page_view(self):
+        """Test that NO exposure event is logged when page is viewed (GET only)."""
         # Clear events
         self.assertEqual(ABTestEvent.objects.count(), 0)
         
-        # GET the A/B test page with force_variant=a
-        response = self.client.get(f'{self.abtest_url}?force_variant=a')
-        self.assertEqual(response.status_code, 200)
-        
-        # Note: Forced variants don't log exposure events (see view code)
-        # So we need to test without force_variant
-        ABTestEvent.objects.all().delete()
-        
-        # GET without force_variant (normal flow) - with browser User-Agent and Sec-Fetch headers
+        # GET the A/B test page - should NOT log any events
         response = self.client.get(self.abtest_url, **self.nav_headers)
         self.assertEqual(response.status_code, 200)
         
-        # Should have exactly one exposure event
-        events = ABTestEvent.objects.all()
-        self.assertEqual(events.count(), 1)
-        
-        event = events.first()
-        self.assertEqual(event.experiment_name, 'button_label_kudos_vs_thanks')
-        self.assertIn(event.variant, ['kudos', 'thanks'])
-        self.assertEqual(event.event_type, ABTestEvent.EVENT_TYPE_EXPOSURE)
-        self.assertEqual(event.endpoint, '/218b7ae/')
+        # Should have NO events logged
+        self.assertEqual(ABTestEvent.objects.count(), 0, "GET request should NOT log exposure")
     
-    def test_conversion_event_logged_on_click_endpoint(self):
-        """Test that conversion event is logged when click endpoint is called."""
+    def test_first_click_logs_exposure_and_conversion(self):
+        """Test that first click logs both exposure and conversion."""
         # Clear events
         self.assertEqual(ABTestEvent.objects.count(), 0)
         
-        # First, assign a variant via GET request (creates session assignment)
+        # First, assign a variant via GET request (creates session assignment, NO exposure)
         with patch('core.views.random.choice', return_value='kudos'):
             response_get = self.client.get(self.abtest_url, **self.nav_headers)
             self.assertEqual(response_get.status_code, 200)
         
-        # POST to click endpoint - variant comes from session, not POST data
+        # GET should NOT create any events
+        self.assertEqual(ABTestEvent.objects.count(), 0)
+        
+        # POST to click endpoint - first click should log BOTH exposure and conversion
         response = self.client.post(
             self.click_url,
-            data={},  # No variant in POST - uses session variant
+            data={},
             **self.ajax_headers
         )
         
         self.assertEqual(response.status_code, 200, 
                         f"Expected 200, got {response.status_code}. Response: {response.content.decode()[:200]}")
         
-        # Should have one exposure (from GET) and one conversion (from POST)
+        # Should have exactly one exposure and one conversion
         events = ABTestEvent.objects.all()
         self.assertEqual(events.count(), 2)  # One exposure + one conversion
         
-        # Find the conversion event
+        # Verify exposure
+        exposure_event = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).first()
+        self.assertIsNotNone(exposure_event)
+        self.assertEqual(exposure_event.experiment_name, 'button_label_kudos_vs_thanks')
+        self.assertEqual(exposure_event.variant, 'kudos')
+        self.assertEqual(exposure_event.event_type, ABTestEvent.EVENT_TYPE_EXPOSURE)
+        self.assertEqual(exposure_event.endpoint, '/218b7ae/')
+        
+        # Verify conversion
         conversion_event = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_CONVERSION).first()
         self.assertIsNotNone(conversion_event)
         self.assertEqual(conversion_event.experiment_name, 'button_label_kudos_vs_thanks')
-        self.assertEqual(conversion_event.variant, 'kudos')  # Should match session variant from GET
+        self.assertEqual(conversion_event.variant, 'kudos')
         self.assertEqual(conversion_event.event_type, ABTestEvent.EVENT_TYPE_CONVERSION)
         self.assertEqual(conversion_event.endpoint, '/218b7ae/')
     
-    def test_conversion_event_with_thanks_variant(self):
-        """Test conversion event logging with 'thanks' variant."""
+    def test_second_click_logs_only_conversion(self):
+        """Test that second click logs only conversion, not duplicate exposure."""
         # Clear events
         self.assertEqual(ABTestEvent.objects.count(), 0)
         
-        # First, assign 'thanks' variant via GET request (creates session assignment)
-        with patch('core.views.random.choice', return_value='thanks'):
-            response_get = self.client.get(self.abtest_url, **self.nav_headers)
-            self.assertEqual(response_get.status_code, 200)
-            self.assertEqual(response_get.context['variant'], 'thanks')
+        # GET to assign variant (no events logged)
+        self.client.get(self.abtest_url, **self.nav_headers)
+        self.assertEqual(ABTestEvent.objects.count(), 0)
         
-        # POST to click endpoint - variant comes from session, not POST data
-        response = self.client.post(
-            self.click_url,
-            data={},  # No variant in POST - uses session variant
-            **self.ajax_headers
-        )
+        # First click - logs exposure + conversion
+        response1 = self.client.post(self.click_url, data={}, **self.ajax_headers)
+        self.assertEqual(response1.status_code, 200)
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count(), 1)
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_CONVERSION).count(), 1)
         
-        self.assertEqual(response.status_code, 200,
-                        f"Expected 200, got {response.status_code}. Response: {response.content.decode()[:200]}")
+        # Second click - logs ONLY conversion, NOT duplicate exposure
+        response2 = self.client.post(self.click_url, data={}, **self.ajax_headers)
+        self.assertEqual(response2.status_code, 200)
         
-        # Should have one exposure (from GET) and one conversion (from POST)
-        events = ABTestEvent.objects.all()
-        self.assertEqual(events.count(), 2)  # One exposure + one conversion
-        
-        # Find the conversion event
-        conversion_event = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_CONVERSION).first()
-        self.assertIsNotNone(conversion_event)
-        self.assertEqual(conversion_event.variant, 'thanks')  # Should match session variant from GET
-        self.assertEqual(conversion_event.event_type, ABTestEvent.EVENT_TYPE_CONVERSION)
+        # Should still have exactly 1 exposure, but now 2 conversions
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count(), 1)
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_CONVERSION).count(), 2)
     
     def test_click_endpoint_uses_session_variant_not_post_data(self):
         """Test that click endpoint uses session variant, ignoring untrusted POST data."""
@@ -329,12 +318,12 @@ class ABTestIntegrationTest(TestCase):
         }
         ABTestEvent.objects.all().delete()
     
-    def test_full_flow_exposure_then_conversion(self):
-        """Test full flow: exposure event on page view, then conversion on click."""
+    def test_full_flow_no_exposure_on_get_then_exposure_and_conversion_on_click(self):
+        """Test full flow: NO exposure on GET, then exposure + conversion on first click."""
         # Clear DB
         self.assertEqual(ABTestEvent.objects.count(), 0)
         
-        # Step 1: GET the A/B test page (no force param, no cookie) - with browser User-Agent and Sec-Fetch headers
+        # Step 1: GET the A/B test page - should NOT log exposure
         response = self.client.get(self.abtest_url, **self.nav_headers)
         self.assertEqual(response.status_code, 200)
         
@@ -342,39 +331,36 @@ class ABTestIntegrationTest(TestCase):
         variant = response.context['variant']
         self.assertIn(variant, ['kudos', 'thanks'])
         
-        # Get cookie value
-        cookie_value = response.cookies.get('ab_variant').value
-        self.assertEqual(cookie_value, variant)
+        # Should have NO events from GET
+        self.assertEqual(ABTestEvent.objects.count(), 0, "GET should not log exposure")
         
-        # Should have exactly one exposure event
-        exposure_events = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE)
-        self.assertEqual(exposure_events.count(), 1)
-        
-        exposure_event = exposure_events.first()
-        self.assertEqual(exposure_event.experiment_name, 'button_label_kudos_vs_thanks')
-        self.assertEqual(exposure_event.variant, variant)
-        self.assertEqual(exposure_event.event_type, ABTestEvent.EVENT_TYPE_EXPOSURE)
-        self.assertEqual(exposure_event.endpoint, '/218b7ae/')
-        
-        # Step 2: Simulate button click (POST to click endpoint)
-        # Session is already set from the GET request, so variant should come from session
-        
+        # Step 2: First click - should log BOTH exposure and conversion
         response_click = self.client.post(
             self.click_url,
-            data={},  # Don't send variant in POST - it should come from session
+            data={},
             **self.ajax_headers
         )
         
         self.assertEqual(response_click.status_code, 200,
                         f"Expected 200, got {response_click.status_code}. Response: {response_click.content.decode()[:200]}")
         
-        # Should now have exactly one exposure and one conversion
+        # Should now have exactly one exposure and one conversion (both from click)
         self.assertEqual(ABTestEvent.objects.count(), 2)
+        
+        exposure_events = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE)
+        self.assertEqual(exposure_events.count(), 1)
         
         conversion_events = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_CONVERSION)
         self.assertEqual(conversion_events.count(), 1)
         
+        exposure_event = exposure_events.first()
         conversion_event = conversion_events.first()
+        
+        self.assertEqual(exposure_event.experiment_name, 'button_label_kudos_vs_thanks')
+        self.assertEqual(exposure_event.variant, variant)
+        self.assertEqual(exposure_event.event_type, ABTestEvent.EVENT_TYPE_EXPOSURE)
+        self.assertEqual(exposure_event.endpoint, '/218b7ae/')
+        
         self.assertEqual(conversion_event.experiment_name, 'button_label_kudos_vs_thanks')
         self.assertEqual(conversion_event.variant, variant)
         self.assertEqual(conversion_event.event_type, ABTestEvent.EVENT_TYPE_CONVERSION)
@@ -384,8 +370,8 @@ class ABTestIntegrationTest(TestCase):
         self.assertEqual(exposure_event.variant, conversion_event.variant)
         self.assertEqual(exposure_event.experiment_name, conversion_event.experiment_name)
     
-    def test_no_multiple_exposures_same_session(self):
-        """Test that multiple page views in same session log only ONE exposure."""
+    def test_multiple_gets_never_log_exposure(self):
+        """Test that multiple GET requests never log exposure."""
         nav_headers = {
             'HTTP_USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'HTTP_SEC_FETCH_DEST': 'document',
@@ -393,41 +379,21 @@ class ABTestIntegrationTest(TestCase):
             'HTTP_SEC_FETCH_SITE': 'same-origin',
         }
         
-        # First request - should log one exposure
+        # Multiple GET requests - should never log exposure
         response1 = self.client.get(self.abtest_url, **nav_headers)
         variant1 = response1.context['variant']
         self.assertIn(variant1, ['kudos', 'thanks'])
+        self.assertEqual(ABTestEvent.objects.count(), 0, "First GET should not log exposure")
         
-        # Should have exactly one exposure event
-        exposure_count_1 = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count()
-        self.assertEqual(exposure_count_1, 1)
-        
-        # Second request (same session) - should NOT log another exposure
         response2 = self.client.get(self.abtest_url, **nav_headers)
         variant2 = response2.context['variant']
-        
-        # Variant should be the same
         self.assertEqual(variant1, variant2)
+        self.assertEqual(ABTestEvent.objects.count(), 0, "Second GET should not log exposure")
         
-        # Should still have exactly one exposure event (no duplicate)
-        exposure_count_2 = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count()
-        self.assertEqual(exposure_count_2, 1, "Second page view should not create duplicate exposure")
-        
-        # Third request (same session) - should still NOT log another exposure
         response3 = self.client.get(self.abtest_url, **nav_headers)
         variant3 = response3.context['variant']
-        
-        # Variant should still be the same
         self.assertEqual(variant1, variant3)
-        
-        # Should still have exactly one exposure event
-        exposure_count_3 = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count()
-        self.assertEqual(exposure_count_3, 1, "Third page view should not create duplicate exposure")
-        
-        # All exposure events should have the same variant
-        exposure_events = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE)
-        for event in exposure_events:
-            self.assertEqual(event.variant, variant1)
+        self.assertEqual(ABTestEvent.objects.count(), 0, "Third GET should not log exposure")
 
 
 class ABTestPublicAccessTest(TestCase):
@@ -453,16 +419,16 @@ class ABTestPublicAccessTest(TestCase):
         response = self.client.get(self.abtest_url)
         
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'id="abtest"')
+        self.assertContains(response, 'id="abtest-btn"')
         
         # Check that button text is either 'kudos' or 'thanks'
         content = response.content.decode('utf-8')
         
         # Find the button and extract its text
         import re
-        button_match = re.search(r'<button[^>]*id="abtest"[^>]*>([^<]+)</button>', content)
+        button_match = re.search(r'<button[^>]*id="abtest-btn"[^>]*>([^<]+)</button>', content)
         
-        self.assertIsNotNone(button_match, "Button with id='abtest' not found")
+        self.assertIsNotNone(button_match, "Button with id='abtest-btn' not found")
         
         button_text = button_match.group(1).strip()
         self.assertIn(button_text, ['kudos', 'thanks'], 
@@ -482,7 +448,6 @@ class ABTestPublicAccessTest(TestCase):
         self.assertEqual(response.status_code, 200)
         content = response.content.decode('utf-8')
         
-        # Check for gtag calls (using double quotes as per updated template)
-        self.assertIn('gtag("event", "ab_exposure"', content)
+        # Check for gtag calls (exposure removed from page load, only click remains)
         self.assertIn('gtag("event", "ab_button_click"', content)
         self.assertIn('experiment:', content)  # Check for experiment parameter

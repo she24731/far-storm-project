@@ -14,6 +14,7 @@ from django.db.models import Q
 from django.utils import timezone
 from django.http import JsonResponse, HttpResponseNotAllowed, HttpRequest
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 import random
 from .models import Category, Post, Bookmark, ExternalLink
 from .forms import PostForm, UserRegistrationForm
@@ -477,206 +478,91 @@ def health_check(request):
 
 def abtest_view(request):
     """
-    A/B test endpoint for team far-storm.
-    
-    URL: /218b7ae/
-    Publicly accessible, no authentication required.
-    Shows team members and a button with variant text (kudos/thanks).
-    
-    A/B Test Logic:
-    - Variant assignment: Random 50/50 split on first visit, persisted in session
-    - Variant A: "kudos"
-    - Variant B: "thanks"
-    - Only real navigations (GET with Sec-Fetch headers) log exposures
-    - Exactly one exposure per session per experiment/endpoint
-    
-    Debug Forcing (for manual QA only):
-    - ?force_variant=a → always show "kudos"
-    - ?force_variant=b → always show "thanks"
-    - Forced variants are logged but marked as is_forced=True
-    
-    Server-side logging:
-    - All variant exposures are logged to ABTestEvent model
-    - Experiment name: "button_label_kudos_vs_thanks"
+    GET request to render the A/B test page.
+    NO exposure logging happens here anymore.
+    Variant is assigned ONLY if not already stored in session.
     """
-    from .models import ABTestEvent
-    
-    # Only allow GET requests for real page views
     if request.method != "GET":
-        # For safety, return 405 for other methods; DO NOT log any AB events
         return HttpResponseNotAllowed(["GET"])
     
-    # Team information
-    team_nickname = "far-storm"
+    experiment_name = "button_label_kudos_vs_thanks"
+    session_key_variant = f"abexp:{experiment_name}:variant"
+    endpoint_hash = "218b7ae"  # Extract from path or use hardcoded value
+    
+    # Assign variant ONCE per session
+    variant = request.session.get(session_key_variant)
+    if not variant:
+        variant = random.choice(["kudos", "thanks"])
+        request.session[session_key_variant] = variant
+        request.session.modified = True
+    
+    # Team information for display
     team_members = [
         "Chun-Hung Yeh ( stormy-deer )",
         "Celine (Qijing) Li ( adorable-crow )",
         "Denise Wu ( super-giraffe )",
     ]
     
-    experiment_name = "button_label_kudos_vs_thanks"
-    endpoint = request.path  # Use actual request path for consistency
-    
-    # Ensure session has a session_key
-    if not request.session.session_key:
-        request.session.save()
-    
-    # Check for bot requests and admin/staff users
-    is_bot = is_bot_request(request)
-    is_admin = request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)
-    
-    # For bots/admins, show default variant but don't log
-    # Debug forcing mechanism (for manual QA only)
-    force_param = request.GET.get('force_variant', '').strip().lower()
-    is_forced = False
-    
-    if force_param == 'a':
-        variant = 'kudos'
-        is_forced = True
-    elif force_param == 'b':
-        variant = 'thanks'
-        is_forced = True
-    elif is_bot or is_admin:
-        # Bots and admins: show a default variant but don't log
-        variant = 'kudos'  # Default for display only
-    else:
-        # Normal A/B logic: use session-based assignment
-        variant_key = _ab_session_variant_key(experiment_name)
-        variant = request.session.get(variant_key)
-        
-        if variant not in ("kudos", "thanks"):
-            # First visit: randomly assign variant (50/50 split)
-            variant = random.choice(["kudos", "thanks"])
-            request.session[variant_key] = variant
-            request.session.modified = True
-    
-    # Determine if we should log exposure
-    should_log_exposure = (
-        request.method == "GET"
-        and not is_bot_request(request)
-        and _is_navigation_request(request)
+    return render(
+        request,
+        "core/abtest.html",
+        {
+            "variant": variant,
+            "experiment_name": experiment_name,
+            "endpoint_hash": endpoint_hash,
+            "team_members": team_members,
+        },
     )
-    
-    if should_log_exposure:
-        # Use existing: session_flag + get_or_create
-        exposed_key = _ab_session_exposed_key(experiment_name, endpoint)
-        session_id = request.session.session_key
-        
-        if not request.session.get(exposed_key, False):
-            ABTestEvent.objects.get_or_create(
-                experiment_name=experiment_name,
-                endpoint=endpoint,
-                session_id=session_id,
-                event_type="exposure",
-                defaults={"variant": variant}
-            )
-            request.session[exposed_key] = True
-            request.session.modified = True
-    # Else: skip logging but still render the page normally
-    
-    # Prepare context - variant is the canonical source of truth
-    context = {
-        'team_nickname': team_nickname,
-        'team_members': team_members,
-        'variant': variant,  # This variant matches what gets logged
-    }
-    
-    # Render template
-    response = render(request, 'core/abtest.html', context)
-    
-    # Legacy cookie support (for backwards compatibility with existing cookies)
-    # Still set cookie for client-side JS, but variant comes from session
-    if 'ab_variant' not in request.COOKIES or is_forced:
-        # 30 days = 30 * 24 * 60 * 60 seconds
-        max_age = 30 * 24 * 60 * 60
-        response.set_cookie('ab_variant', variant, max_age=max_age, httponly=False)
-    
-    return response
 
 
 @csrf_exempt
+@require_POST
 def abtest_click(request):
     """
-    Endpoint to log A/B test button clicks (conversions) server-side.
-    
-    URL: /218b7ae/click/
-    Called via AJAX when button is clicked.
-    CSRF exempt since this is a public analytics endpoint.
-    Logs as 'conversion' event type per specification.
-    
-    The variant used MUST come from the session's assigned variant, NOT from
-    untrusted POST data, to ensure consistency with the exposure event.
+    Logs BOTH exposure (first-time only) and conversion (every click).
     """
     from .models import ABTestEvent
-    import random
-    
-    # Only allow POST requests for button clicks
-    if request.method != "POST":
-        return JsonResponse({"status": "method_not_allowed"}, status=405)
     
     experiment_name = "button_label_kudos_vs_thanks"
-    endpoint = '/218b7ae/'  # Match the experiment page path
+    session_key_variant = f"abexp:{experiment_name}:variant"
+    session_key_exposed = f"abexp:{experiment_name}:exposed"
+    endpoint_hash = "218b7ae"  # Extract from path or use hardcoded value
     
-    # Ensure session has a session_key
-    if not request.session.session_key:
-        request.session.save()
+    # Require variant to exist. If not, assign it here.
+    variant = request.session.get(session_key_variant)
+    if not variant:
+        variant = random.choice(["kudos", "thanks"])
+        request.session[session_key_variant] = variant
+        request.session.modified = True
     
-    # Skip bots & non-browser POSTs
-    if is_bot_request(request) or not _is_click_request(request):
-        return JsonResponse({"status": "skipped"}, status=200)
-    
-    # Variant ONLY from session
-    variant_key = _ab_session_variant_key(experiment_name)
-    variant = request.session.get(variant_key)
-    
-    # If no variant assigned, default to "thanks" as fallback
-    # This should be rare - normally exposure happens before click
-    if variant not in ("kudos", "thanks"):
-        variant = "thanks"  # Rare fallback if session assignment failed
-    
+    # Get session_id for DB consistency
     session_id = request.session.session_key
+    if not session_id:
+        request.session.save()
+        session_id = request.session.session_key
     
-    # Backfill exposure if missing
-    exposure_qs = ABTestEvent.objects.filter(
-        experiment_name=experiment_name,
-        variant=variant,
-        endpoint=endpoint,
-        session_id=session_id,
-        event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
-    )
-    
-    if not exposure_qs.exists():
-        # Backfill a single exposure if needed (e.g., JS click fired before exposure was written)
+    # 1) Exposure (ONLY FIRST CLICK EVER)
+    if not request.session.get(session_key_exposed):
         ABTestEvent.objects.get_or_create(
             experiment_name=experiment_name,
-            variant=variant,
-            endpoint=endpoint,
-            session_id=session_id,
             event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
-            defaults={
-                "ip_address": request.META.get('REMOTE_ADDR'),
-                "user_agent": request.META.get('HTTP_USER_AGENT', '')[:500],
-                "user": request.user if request.user.is_authenticated else None,
-                "is_forced": False,
-            }
-        )
-    
-    # Then create exactly one conversion event
-    try:
-        ABTestEvent.objects.create(
-            experiment_name=experiment_name,
-            variant=variant,
-            event_type=ABTestEvent.EVENT_TYPE_CONVERSION,
-            endpoint=endpoint,
+            endpoint=f"/{endpoint_hash}/",
             session_id=session_id,
-            ip_address=request.META.get('REMOTE_ADDR'),
-            user_agent=request.META.get('HTTP_USER_AGENT', '')[:500],
-            user=request.user if request.user.is_authenticated else None,
-            is_forced=False,
+            defaults={"variant": variant},
         )
-        return JsonResponse({'status': 'logged'})
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        request.session[session_key_exposed] = True
+        request.session.modified = True
+    
+    # 2) Conversion (log on EVERY click)
+    ABTestEvent.objects.create(
+        experiment_name=experiment_name,
+        event_type=ABTestEvent.EVENT_TYPE_CONVERSION,
+        endpoint=f"/{endpoint_hash}/",
+        session_id=session_id,
+        variant=variant,
+    )
+    
+    return JsonResponse({"status": "ok", "variant": variant})
 
 
 
