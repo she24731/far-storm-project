@@ -1,160 +1,201 @@
-# Sprint 4 Planning – far-storm
+# Sprint 4 Planning
 
-**Project:** Yale Newcomer Survival Guide  
+**Team:** far-storm  
 **Sprint Duration:** 2 weeks  
-**Dates:** November 18, 2024 – December 2, 2024  
-**Team Members:** Chun-Hung Yeh, Celine (Qijing) Li, Denise Wu
+**Dates:** [TBD: dates]  
+**Team Members:** stormy-deer (Chun-Hung Yeh), adorable-crow (Celine Li), super-giraffe (Denise Wu)
 
----
+## Sprint Goal
 
-## 🎯 Sprint Goal
+Complete MVP with A/B testing endpoint, analytics integration, production deployment, and final polish. Ensure 12-factor compliance, comprehensive testing, and complete documentation for final submission.
 
-Deploy to production, finalize the A/B endpoint and analytics, complete the MVP user journeys, and prepare the codebase and documentation for final submission.
+## User Stories
 
----
+### Story 1: A/B Test Endpoint Implementation
+- **As a** developer  
+- **I want** an A/B test endpoint at `/218b7ae/`  
+- **So that** we can test button label variants
 
-## 📌 User Stories Selected for Sprint 4
+**Acceptance Criteria:**
+- Endpoint at first 7 characters of SHA1("far-storm") = `/218b7ae/`
+- Displays team nickname "far-storm" and all team members
+- Button with `id="abtest"` showing either "kudos" or "thanks"
+- 50/50 random variant assignment persisted via session cookie
+- Publicly accessible (no authentication required)
 
-### A/B Testing & Analytics
+**Story Points:** 5  
+**Owner:** stormy-deer
 
-- **S4-1**: Implement A/B test endpoint at `/218b7ae/` (publicly accessible)  
-  - **Description:** Create endpoint at first 7 characters of SHA1("far-storm"), display team nickname and members, show button with id="abtest" that toggles between "kudos" and "thanks" using 50/50 random logic persisted via cookie.  
-  - **Story Points:** 5  
-  - **Owner:** Chun-Hung Yeh
+### Story 2: Server-Side A/B Test Event Tracking
+- **As a** developer  
+- **I want** server-side event tracking for A/B test  
+- **So that** we have reliable analytics data
 
-- **S4-2**: Wire Google Analytics (GA4) with events for A/B page  
-  - **Description:** Integrate GA4 (G-9XJWT2P5LE) via context processor, add `ab_variant_shown` event on page load and `ab_variant_clicked` event on button click. Ensure single GA tag in base.html, no duplicates.  
-  - **Story Points:** 3  
-  - **Owner:** Chun-Hung Yeh
+**Acceptance Criteria:**
+- `ABTestEvent` model created with exposure and conversion event types
+- Exposure logged on first page load per session
+- Conversion logged on button click
+- Session-based deduplication prevents double-counting
+- Bot filtering implemented
 
-### Production Deployment & Infrastructure
+**Story Points:** 5  
+**Owner:** stormy-deer
 
-- **S4-3**: Ensure production deployment on Render using PostgreSQL via `DATABASE_URL`  
-  - **Description:** Verify PostgreSQL configuration via `dj_database_url`, confirm `ALLOWED_HOSTS` includes Render URL and localhost, ensure WhiteNoise serves static files, verify no hardcoded secrets.  
-  - **Story Points:** 3  
-  - **Owner:** Chun-Hung Yeh
+### Story 3: Google Analytics 4 Integration
+- **As a** developer  
+- **I want** GA4 integration for A/B test events  
+- **So that** we have real-time analytics visibility
 
-- **S4-4**: Ensure 12-factor configuration compliance  
-  - **Description:** Audit settings.py for environment variable usage (SECRET_KEY, DATABASE_URL, DEBUG, ALLOWED_HOSTS, GA_MEASUREMENT_ID). Document environment variable requirements.  
-  - **Story Points:** 2  
-  - **Owner:** Chun-Hung Yeh
+**Acceptance Criteria:**
+- GA4 measurement ID (G-9XJWT2P5LE) configured
+- Context processor for GA4 in templates
+- `ab_exposure` event fired on first exposure
+- `ab_button_click` event fired on button click
+- Single GA tag in base.html, no duplicates
 
-### Code Quality & Testing
+**Story Points:** 3  
+**Owner:** stormy-deer
 
-- **S4-5**: Ensure tests are passing and add coverage tooling  
-  - **Description:** Run full test suite, configure coverage.py with pyproject.toml, verify >50% coverage on critical paths (models, views, core flows), generate coverage report.  
-  - **Story Points:** 3  
-  - **Owner:** Chun-Hung Yeh
+### Story 4: Production Deployment on Render
+- **As a** developer  
+- **I want** production deployment on Render  
+- **So that** the application is publicly accessible
 
-- **S4-6**: Ensure linter (ruff) is configured and passes  
-  - **Description:** Configure ruff in pyproject.toml, run linting checks, fix meaningful issues (unused imports, undefined names), ensure clean ruff run with no errors.  
-  - **Story Points:** 2  
-  - **Owner:** Chun-Hung Yeh
+**Acceptance Criteria:**
+- Render service configured with PostgreSQL
+- `DATABASE_URL` environment variable working
+- WhiteNoise serving static files correctly
+- `ALLOWED_HOSTS` includes Render URL
+- Build and start commands working
+- Health checks passing
 
-### Documentation & Polish
+**Story Points:** 5  
+**Owner:** stormy-deer
 
-- **S4-7**: Update README and documentation for deployment and analytics  
-  - **Description:** Update README.md with accurate GA configuration description, document deployment procedure, clarify staging vs production environments, fix any inaccurate statements.  
-  - **Story Points:** 2  
-  - **Owner:** Chun-Hung Yeh
+### Story 5: 12-Factor Compliance Audit
+- **As a** developer  
+- **I want** 12-factor app compliance verified  
+- **So that** the application follows best practices
 
-- **S4-8**: Auto-generate unique post slugs from title  
-  - **Description:** Remove manual slug input from contributor forms, implement auto-generation in Post model save() method with uniqueness checks, update tests to verify slug generation.  
-  - **Story Points:** 3  
-  - **Owner:** Chun-Hung Yeh
+**Acceptance Criteria:**
+- All configuration via environment variables
+- No hardcoded secrets
+- Logging to stdout
+- Database as attached resource
+- Static files served correctly
+- Documentation updated
 
-- **S4-9**: Create Sprint 4 documentation (planning, review, retrospective, report)  
-  - **Description:** Create comprehensive Sprint 4 documentation following format of previous sprints, including velocity tracking, completed work, demo notes, and retrospective insights.  
-  - **Story Points:** 3  
-  - **Owner:** Chun-Hung Yeh, with input from Celine and Denise
+**Story Points:** 3  
+**Owner:** stormy-deer
 
----
+### Story 6: Comprehensive Testing and CI/CD
+- **As a** developer  
+- **I want** comprehensive tests and CI/CD pipeline  
+- **So that** code quality is maintained
 
-## 🧮 Story Points Committed
+**Acceptance Criteria:**
+- Test coverage >75% overall
+- GitHub Actions CI configured
+- Tests run on push and pull requests
+- Ruff linting in CI pipeline
+- All tests passing
 
-**Total: 26 points**
+**Story Points:** 3  
+**Owner:** stormy-deer
 
----
+## Tasks Breakdown
 
-## 👥 Team Assignments
+1. **A/B Test Endpoint** (stormy-deer)
+   - Create view for `/218b7ae/` endpoint
+   - Implement variant assignment logic (50/50 split)
+   - Session persistence for variant
+   - Create template with team info and button
+   - Test variant consistency
 
-| Team Member | Responsibilities in Sprint 4 |
-|-------------|------------------------------|
-| **Chun-Hung Yeh** | A/B endpoint implementation, GA4 integration, production deployment verification, coverage setup, linting configuration, documentation updates, Sprint 4 docs creation |
-| **Celine (Qijing) Li** | A/B endpoint testing, analytics verification, documentation review, UX validation |
-| **Denise Wu** | Production deployment testing, A/B endpoint validation, documentation review, final polish feedback |
+2. **ABTestEvent Model** (stormy-deer)
+   - Design and create ABTestEvent model
+   - Implement exposure logging logic
+   - Implement conversion logging logic
+   - Session-based deduplication
+   - Bot filtering implementation
 
----
+3. **GA4 Integration** (stormy-deer)
+   - Configure GA4 measurement ID in settings
+   - Create context processor for GA4
+   - Add GA tag to base.html
+   - Implement ab_exposure event
+   - Implement ab_button_click event
 
-## 🌐 Environments
+4. **Render Deployment** (stormy-deer)
+   - Configure Render service
+   - Set up PostgreSQL database
+   - Configure environment variables
+   - Set build and start commands
+   - Test deployment
 
-- **Staging (Render):** https://yale-newcomer-survival-guide-staging.onrender.com/
-- **Production (Render):** https://yale-newcomer-survival-guide.onrender.com/
-- **Local development (optional):** http://127.0.0.1:8000 (for `python manage.py runserver`)
+5. **12-Factor Audit** (stormy-deer)
+   - Audit settings.py for environment variables
+   - Verify no hardcoded secrets
+   - Configure logging to stdout
+   - Verify static files configuration
+   - Update documentation
 
-Staging on Render is used for QA and testing new changes before deploying to production. Both staging and production use PostgreSQL and the same codebase (with different environment variables).
+6. **CI/CD Setup** (stormy-deer)
+   - Configure GitHub Actions workflow
+   - Set up test execution in CI
+   - Add linting to CI pipeline
+   - Test CI pipeline
+   - Document CI process
 
----
+7. **Testing** (all)
+   - Write tests for A/B test endpoint
+   - Write tests for event tracking
+   - Write tests for GA4 integration
+   - Verify test coverage
+   - Write deployment tests
 
-## ⚠️ Dependencies & Risks
+8. **Documentation** (all)
+   - Update README with deployment info
+   - Document A/B test endpoint
+   - Document analytics setup
+   - Complete final report
+   - Ensure all documentation current
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| **Render infrastructure issues** | High | Monitor Render dashboard, have rollback plan, document deployment steps |
-| **Misconfigured environment variables** | High | Create env var checklist, verify DATABASE_URL, GA_MEASUREMENT_ID in production |
-| **A/B endpoint hash mismatch** | Medium | Double-check SHA1("far-storm") = 218b7ae, verify ASCII hyphen vs Unicode dash |
-| **Time constraints for analytics verification** | Medium | Test GA events early in staging, verify in production ASAP |
-| **Coverage tooling setup complexity** | Low | Use pyproject.toml for simple config, focus on critical paths only |
-| **Documentation completeness** | Low | Follow Sprint 2/3 format, iterate with team feedback |
+## Sprint Capacity
 
----
+- **Total Story Points:** 24
+- **Team Velocity (estimated):** 24 points (based on Sprint 3)
+- **Sprint Commitment:** 24 points
 
-## 📋 Acceptance Criteria
+## Dependencies
 
-### A/B Endpoint (S4-1)
-- ✅ Endpoint accessible at `/218b7ae/` without authentication
-- ✅ Displays team nickname "far-storm"
-- ✅ Lists all three team members
-- ✅ Button has `id="abtest"` and shows either "kudos" or "thanks"
-- ✅ 50/50 variant distribution, persisted via cookie (30-day expiration)
+- All previous sprint features complete
+- Render account setup
+- GA4 account with measurement ID
+- GitHub repository ready for CI
 
-### Analytics (S4-2)
-- ✅ Single GA4 tag in base.html (no duplicates)
-- ✅ GA_MEASUREMENT_ID from environment variable
-- ✅ Events fired: `ab_variant_shown` (page load), `ab_variant_clicked` (button click)
+## Risks and Mitigation
 
-### Production (S4-3, S4-4)
-- ✅ PostgreSQL via DATABASE_URL (not SQLite)
-- ✅ ALLOWED_HOSTS includes Render URL
-- ✅ No hardcoded secrets
-- ✅ Environment variables documented
+- **Risk:** A/B test event tracking complexity  
+  **Mitigation:** Start with simple implementation, iterate based on testing
 
-### Code Quality (S4-5, S4-6)
-- ✅ All tests passing (61+ tests)
-- ✅ Coverage configured, >50% on critical paths
-- ✅ Ruff configured and passing
+- **Risk:** Deployment configuration issues  
+  **Mitigation:** Test deployment early, have staging environment ready
 
-### Documentation (S4-7, S4-9)
-- ✅ README.md accurate and complete
-- ✅ Sprint 4 planning, review, retrospective, report created
+- **Risk:** GA4 integration complexity  
+  **Mitigation:** Use standard GA4 implementation patterns
 
----
+- **Risk:** Time pressure for final submission  
+  **Mitigation:** Prioritize critical features, defer non-essential polish
 
-## 📅 Sprint Timeline
+## Definition of Done
 
-- **Week 1 (Nov 18-25):** A/B endpoint, GA integration, production verification
-- **Week 2 (Nov 26-Dec 2):** Coverage, linting, documentation, final polish
-
----
-
-## 🎯 Definition of Done
-
-- All user stories completed and tested
-- A/B endpoint publicly accessible and functional
-- GA4 events tracking correctly
-- Production deployment verified
-- Coverage >50% on critical paths
-- Linting passes cleanly
-- Documentation updated and complete
-- Sprint 4 docs (planning, review, retrospective, report) created
-
+- [ ] Code reviewed by at least one team member
+- [ ] All tests passing (`python manage.py test`)
+- [ ] Ruff linting passes (`ruff check .`)
+- [ ] Test coverage >75%
+- [ ] CI/CD pipeline working
+- [ ] Production deployment successful
+- [ ] 12-factor compliance verified
+- [ ] Documentation complete
+- [ ] Changes merged to main branch

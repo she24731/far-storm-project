@@ -1,25 +1,26 @@
 # Sprint 2 Planning
 
 **Team:** far-storm  
-**Sprint Duration:** [TBD: dates]  
-**Team Members:** stormy-deer, adorable-crow, super-giraffe
+**Sprint Duration:** 2 weeks  
+**Dates:** [TBD: dates]  
+**Team Members:** stormy-deer (Chun-Hung Yeh), adorable-crow (Celine Li), super-giraffe (Denise Wu)
 
 ## Sprint Goal
 
-Build the public-facing user interface for the Yale Newcomer Survival Guide. Implement home page, category listings, post detail pages, and contributor dashboard for managing posts.
+Build the public-facing user interface and content discovery features. Implement home page, category listings, post detail pages, and search functionality to enable newcomers to browse and find relevant information.
 
 ## User Stories
 
-### Story 1: Public Home Page
-- **As a** visitor  
-- **I want** to see a welcoming home page with featured content  
-- **So that** I can quickly understand what the site offers
+### Story 1: Home Page and Category Hub
+- **As a** newcomer  
+- **I want** to see a home page with category navigation and latest posts  
+- **So that** I can quickly discover relevant information
 
 **Acceptance Criteria:**
-- Home page displays recent approved posts
-- Category navigation visible
-- Search functionality accessible
-- Responsive design using Bootstrap
+- Home page displays all available categories with links
+- Latest approved posts shown on home page (limited number)
+- Clean, responsive design using Bootstrap 5
+- Category icons and descriptions visible
 
 **Story Points:** 5  
 **Owner:** adorable-crow
@@ -30,104 +31,129 @@ Build the public-facing user interface for the Yale Newcomer Survival Guide. Imp
 - **So that** I can find relevant information quickly
 
 **Acceptance Criteria:**
-- Category list page shows all categories
-- Category detail page shows posts in that category
-- Posts filtered by status (only approved)
-- Pagination for large lists
+- Category detail page shows all approved posts in that category
+- Pagination implemented for categories with many posts
+- Posts displayed with title, summary, and publication date
+- Only approved posts visible to non-authenticated users
 
 **Story Points:** 5  
 **Owner:** super-giraffe
 
 ### Story 3: Post Detail Pages
-- **As a** reader  
+- **As a** user  
 - **I want** to view full post content  
-- **So that** I can read complete articles
+- **So that** I can read complete information about a topic
 
 **Acceptance Criteria:**
 - Post detail page displays full content
-- Shows author, publication date, category
-- Related posts suggested
-- Bookmark functionality available
+- Post metadata shown (author, category, published date)
+- Navigation back to category or home
+- Status-based access control (only approved posts public)
+- Responsive layout for different screen sizes
 
-**Story Points:** 8  
-**Owner:** stormy-deer
+**Story Points:** 5  
+**Owner:** super-giraffe
 
-### Story 4: Contributor Dashboard
-- **As a** contributor  
-- **I want** a dashboard to manage my posts  
-- **So that** I can track and edit my submissions
+### Story 4: Search Functionality
+- **As a** user  
+- **I want** to search across all posts  
+- **So that** I can find information by keywords
 
 **Acceptance Criteria:**
-- Dashboard shows user's posts by status
-- Can create new posts
-- Can edit draft/pending posts
-- Can view post status and feedback
+- Search form on home page and navigation
+- Search queries post titles and content
+- Results page displays matching posts
+- Search results show category and summary
+- Only approved posts included in search
 
-**Story Points:** 8  
+**Story Points:** 5  
+**Owner:** stormy-deer
+
+### Story 5: Template Architecture and Bootstrap Integration
+- **As a** developer  
+- **I want** a consistent template structure with Bootstrap styling  
+- **So that** the UI is responsive and maintainable
+
+**Acceptance Criteria:**
+- Base template with navigation and footer
+- Bootstrap 5 integrated and configured
+- Responsive navigation menu
+- Consistent styling across all pages
+- Custom CSS for project-specific styling
+
+**Story Points:** 2  
 **Owner:** adorable-crow
 
 ## Tasks Breakdown
 
-1. **Home Page Template** (adorable-crow)
-   - Create home.html template
-   - Implement recent posts query
-   - Add Bootstrap styling
-   - Add search form
+1. **Home Page View and Template** (adorable-crow)
+   - Create home view that queries categories and latest posts
+   - Design home page template with category grid
+   - Display latest approved posts section
+   - Add Bootstrap styling and responsive layout
 
-2. **Category Views** (super-giraffe)
-   - Create category_list view
-   - Create category_detail view
-   - Implement post filtering
-   - Add pagination
+2. **Category Listing Views** (super-giraffe)
+   - Create category detail view with post listing
+   - Implement pagination for post lists
+   - Create category template with post cards
+   - Filter to show only approved posts
 
-3. **Post Detail View** (stormy-deer)
-   - Create post_detail view
-   - Implement related posts logic
-   - Add bookmark button
-   - Style with Bootstrap
+3. **Post Detail View** (super-giraffe)
+   - Create post detail view with proper access control
+   - Design post detail template
+   - Add navigation breadcrumbs
+   - Implement status-based visibility logic
 
-4. **Contributor Dashboard** (adorable-crow)
-   - Create dashboard view
-   - Filter posts by user and status
-   - Add create/edit post links
-   - Display status badges
+4. **Search Implementation** (stormy-deer)
+   - Create search view with query processing
+   - Implement search across post titles and content
+   - Create search results template
+   - Add search form to navigation
 
-5. **URL Routing** (super-giraffe)
-   - Configure URL patterns
-   - Add URL names for reverse lookup
-   - Test all routes
+5. **Template Architecture** (adorable-crow)
+   - Create base.html with Bootstrap navigation
+   - Set up template inheritance structure
+   - Add custom CSS file
+   - Ensure responsive design principles
 
 6. **Testing** (all)
-   - Write view tests
-   - Test template rendering
-   - Test user permissions
+   - Write tests for home page view
+   - Write tests for category listing
+   - Write tests for post detail access control
+   - Write tests for search functionality
 
 ## Sprint Capacity
 
-- **Total Story Points:** 26
-- **Team Velocity (estimated):** 22 points (based on Sprint 1)
-- **Sprint Commitment:** 26 points (stretch goal)
+- **Total Story Points:** 22
+- **Team Velocity (estimated):** 20 points (based on Sprint 1)
+- **Sprint Commitment:** 20 points
 
 ## Dependencies
 
-- Sprint 1 models and authentication complete
-- Bootstrap CSS framework
+- Sprint 1 foundation complete (models, authentication)
+- Bootstrap 5 CSS framework
 - Template inheritance structure
 
 ## Risks and Mitigation
 
-- **Risk:** Complex template inheritance  
-  **Mitigation:** Establish base template early, document structure
+- **Risk:** UI/UX design inconsistencies  
+  **Mitigation:** Establish base template early, review designs together
 
-- **Risk:** Pagination performance  
-  **Mitigation:** Use Django's built-in pagination, test with large datasets
+- **Risk:** Performance issues with large post lists  
+  **Mitigation:** Implement pagination from the start, optimize queries
+
+- **Risk:** Search implementation complexity  
+  **Mitigation:** Start with simple Django ORM search, can enhance later
+
+- **Risk:** Access control bugs exposing draft posts  
+  **Mitigation:** Comprehensive testing of status-based filtering
 
 ## Definition of Done
 
 - [ ] Code reviewed by at least one team member
 - [ ] All tests passing (`python manage.py test`)
 - [ ] Ruff linting passes (`ruff check .`)
-- [ ] Templates render correctly
-- [ ] No critical bugs
+- [ ] Responsive design tested on multiple screen sizes
+- [ ] Access control verified (no draft posts visible publicly)
 - [ ] Documentation updated
-
+- [ ] Changes merged to main branch

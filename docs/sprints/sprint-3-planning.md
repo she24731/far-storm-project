@@ -1,152 +1,168 @@
 # Sprint 3 Planning
 
 **Team:** far-storm  
-**Sprint Duration:** [TBD: dates]  
-**Team Members:** stormy-deer, adorable-crow, super-giraffe
+**Sprint Duration:** 2 weeks  
+**Dates:** [TBD: dates]  
+**Team Members:** stormy-deer (Chun-Hung Yeh), adorable-crow (Celine Li), super-giraffe (Denise Wu)
 
 ## Sprint Goal
 
-Complete contributor workflows, implement admin tools for content moderation, and set up staging deployment on Render. Begin A/B testing infrastructure planning.
+Implement contributor workflows for post creation and management, and build admin moderation tools. Enable contributors to submit and edit posts, and provide admins with efficient content review and approval workflows.
 
 ## User Stories
 
-### Story 1: Complete Contributor Dashboard
+### Story 1: Contributor Post Submission
 - **As a** contributor  
-- **I want** to fully manage my posts through the dashboard  
-- **So that** I can create, edit, and track my submissions efficiently
+- **I want** to create and submit posts for review  
+- **So that** I can share knowledge with the community
 
 **Acceptance Criteria:**
-- Complete edit post workflow
-- Status tracking and feedback display
-- Delete draft posts functionality
-- Clear UX for all actions
+- Post creation form with title, content, category selection
+- Save as draft functionality
+- Submit for review (status → pending)
+- Auto-generated slugs from titles
+- Validation and error handling
+- Accessible only to contributors
 
 **Story Points:** 5  
 **Owner:** adorable-crow
 
-### Story 2: Admin Content Moderation Tools
-- **As an** admin  
-- **I want** tools to review and moderate posts  
-- **So that** I can maintain content quality
+### Story 2: Contributor Post Management Dashboard
+- **As a** contributor  
+- **I want** to view and manage my posts  
+- **So that** I can track their status and edit them
 
 **Acceptance Criteria:**
-- Admin dashboard for pending posts
-- Approve/reject workflow
-- Bulk actions for moderation
-- Email notifications for contributors
+- Contributor dashboard showing all user's posts
+- Post list filtered by status (draft, pending, approved, rejected)
+- Edit functionality for draft and rejected posts
+- View read-only details for pending and approved posts
+- Status indicators and timestamps visible
+
+**Story Points:** 5  
+**Owner:** adorable-crow
+
+### Story 3: Admin Moderation Dashboard
+- **As an** admin  
+- **I want** a dashboard to review pending posts  
+- **So that** I can efficiently moderate content
+
+**Acceptance Criteria:**
+- Admin dashboard showing all pending posts
+- Post details displayed (title, content, author, category)
+- Approve action sets status to approved and sets published_at
+- Reject action sets status to rejected
+- Clear indication of moderation queue status
 
 **Story Points:** 8  
-**Owner:** stormy-deer
+**Owner:** super-giraffe
 
-### Story 3: Post Submission Form
+### Story 4: Post Editing Workflow
 - **As a** contributor  
-- **I want** a comprehensive form to submit posts  
-- **So that** I can create well-structured content
+- **I want** to edit my draft and rejected posts  
+- **So that** I can improve content before resubmission
 
 **Acceptance Criteria:**
-- Rich text editing support
-- Category selection
-- Auto-save drafts
-- Form validation
+- Edit view for posts owned by contributor
+- Only draft and rejected posts editable
+- Pending and approved posts read-only
+- Form pre-populated with existing data
+- Slug regeneration on title change if needed
 
 **Story Points:** 5  
-**Owner:** super-giraffe
+**Owner:** adorable-crow
 
-### Story 4: Staging Deployment on Render
+### Story 5: Template Organization Refactoring
 - **As a** developer  
-- **I want** a staging environment on Render  
-- **So that** we can test changes before production
+- **I want** better organized templates  
+- **So that** maintenance is easier
 
 **Acceptance Criteria:**
-- Render staging service configured
-- PostgreSQL database connected
-- Environment variables set correctly
-- Static files served via WhiteNoise
-- Automated deployment from main branch
+- Extract reusable template components
+- Reduce duplication in templates
+- Better organization of template files
+- Maintained functionality after refactoring
 
-**Story Points:** 5  
-**Owner:** stormy-deer
-
-### Story 5: A/B Testing Infrastructure Planning
-- **As a** developer  
-- **I want** to plan the A/B testing implementation  
-- **So that** we can implement it in Sprint 4
-
-**Acceptance Criteria:**
-- A/B endpoint design documented
-- Analytics integration plan (GA4)
-- Database schema for ABTestEvent model
-- Variant assignment logic designed
-
-**Story Points:** 3  
-**Owner:** super-giraffe
+**Story Points:** 2  
+**Owner:** adorable-crow
 
 ## Tasks Breakdown
 
-1. **Complete Dashboard** (adorable-crow)
-   - Finish edit post view
-   - Implement delete functionality
-   - Improve status display
-   - Add user feedback
+1. **Post Submission Form and View** (adorable-crow)
+   - Create post submission form with all required fields
+   - Implement save as draft functionality
+   - Implement submit for review functionality
+   - Add form validation and error handling
+   - Create submission template
 
-2. **Admin Moderation** (stormy-deer)
+2. **Contributor Dashboard** (adorable-crow)
+   - Create contributor dashboard view
+   - Query user's posts filtered by status
+   - Create dashboard template with post list
+   - Add status indicators and navigation
+
+3. **Admin Moderation Dashboard** (super-giraffe)
    - Create admin dashboard view
-   - Implement approve/reject actions
-   - Add bulk operations
-   - Set up email notifications
+   - Query all pending posts
+   - Create moderation template
+   - Display post details for review
 
-3. **Post Form** (super-giraffe)
-   - Create submission form
-   - Add form validation
-   - Implement draft saving
-   - Style with Bootstrap
+4. **Approve/Reject Actions** (super-giraffe)
+   - Implement approve action (sets status, published_at)
+   - Implement reject action (sets status)
+   - Add confirmation messages
+   - Update post workflow logic
 
-4. **Render Deployment** (stormy-deer)
-   - Set up Render service
-   - Configure PostgreSQL
-   - Set environment variables
-   - Test deployment process
+5. **Post Editing** (adorable-crow)
+   - Create post edit view with access control
+   - Pre-populate form with existing data
+   - Handle slug regeneration on title changes
+   - Ensure only editable posts can be edited
 
-5. **A/B Planning** (super-giraffe)
-   - Design endpoint structure
-   - Plan GA4 integration
-   - Design ABTestEvent model
-   - Document variant logic
+6. **Template Refactoring** (adorable-crow)
+   - Extract common template components
+   - Organize template files better
+   - Reduce duplication
+   - Test all templates still work
 
-6. **Testing** (all)
-   - Write tests for new features
-   - Test deployment process
-   - Integration testing
+7. **Testing** (all)
+   - Write tests for post submission
+   - Write tests for contributor dashboard
+   - Write tests for admin moderation
+   - Write tests for access control
 
 ## Sprint Capacity
 
-- **Total Story Points:** 26
-- **Team Velocity (estimated):** 23 points (based on Sprint 2)
-- **Sprint Commitment:** 26 points
+- **Total Story Points:** 25
+- **Team Velocity (estimated):** 22 points (based on Sprint 2)
+- **Sprint Commitment:** 23 points
 
 ## Dependencies
 
-- Render account and PostgreSQL database
-- GA4 measurement ID for analytics planning
-- Email service for notifications (optional)
+- Sprint 2 public UI complete
+- User authentication and roles working
+- Post model with status workflow in place
 
 ## Risks and Mitigation
 
-- **Risk:** Render deployment complexity  
-  **Mitigation:** Start deployment early, document process
+- **Risk:** Complex workflow logic for post status transitions  
+  **Mitigation:** Document workflow states clearly, test thoroughly
 
-- **Risk:** Email service configuration  
-  **Mitigation:** Use Django's email backend, can be console for staging
+- **Risk:** Access control complexity in editing  
+  **Mitigation:** Use decorators consistently, comprehensive testing
 
-- **Risk:** A/B testing complexity  
-  **Mitigation:** Thorough planning this sprint, implementation next sprint
+- **Risk:** Template refactoring breaking existing pages  
+  **Mitigation:** Refactor incrementally, test each change
+
+- **Risk:** Admin dashboard performance with many pending posts  
+  **Mitigation:** Implement pagination if needed, optimize queries
 
 ## Definition of Done
 
 - [ ] Code reviewed by at least one team member
 - [ ] All tests passing (`python manage.py test`)
 - [ ] Ruff linting passes (`ruff check .`)
-- [ ] Staging deployment working
-- [ ] No critical bugs
+- [ ] Access control verified for all views
+- [ ] Workflow logic tested (all status transitions)
 - [ ] Documentation updated
-
+- [ ] Changes merged to main branch
