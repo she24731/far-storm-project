@@ -56,6 +56,14 @@ Velocity was tracked by comparing planned vs completed story points per sprint. 
 
 **Average Velocity:** 21.25 points per sprint
 
+### Velocity Chart
+
+The following chart visualizes planned vs completed story points across all four sprints:
+
+![Sprint Velocity Chart](velocity.png)
+
+*Chart generated using `scripts/velocity_chart.py`. See `docs/final-report.md` for regeneration instructions.*
+
 ### Velocity Analysis
 
 The team demonstrated strong estimation accuracy and consistent delivery. Sprint 1 established a baseline velocity of 18 points, which increased to 20 points in Sprint 2 as the team gained familiarity with the codebase and improved coordination. Sprint 3 saw further improvement to 23 points, and Sprint 4 achieved perfect completion (100%) with 24 points, demonstrating the team's maturing Agile practices and refined estimation process.
@@ -64,7 +72,7 @@ The upward trend in velocity reflects several factors: improved task breakdown, 
 
 ### Burndown Tracking
 
-While not explicitly visualized as a burndown chart, sprint reviews documented progress toward sprint goals throughout the project. The velocity data shows consistent delivery patterns across all sprints, with each sprint completing the majority of committed work. Sprint 4's 100% completion rate demonstrates the team's ability to accurately estimate capacity and deliver on commitments.
+Sprint reviews documented progress toward sprint goals throughout the project. The velocity chart above and velocity data table show consistent delivery patterns across all sprints, with each sprint completing the majority of committed work. Sprint 4's 100% completion rate demonstrates the team's ability to accurately estimate capacity and deliver on commitments.
 
 ### Process Improvements
 
