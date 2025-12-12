@@ -170,83 +170,50 @@ class ABTestEventLoggingTest(TestCase):
         # Clear all events before each test
         ABTestEvent.objects.all().delete()
     
-    def test_exposure_event_not_logged_on_page_view(self):
-        """Test that NO exposure event is logged when page is viewed (GET only)."""
+    def test_first_get_logs_single_exposure(self):
+        """Test that first GET logs exactly ONE Exposure."""
         # Clear events
         self.assertEqual(ABTestEvent.objects.count(), 0)
         
-        # GET the A/B test page - should NOT log any events
-        response = self.client.get(self.abtest_url, **self.nav_headers)
+        # GET the A/B test page with browser UA - should log ONE exposure
+        response = self.client.get(self.abtest_url, HTTP_USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0")
         self.assertEqual(response.status_code, 200)
         
-        # Should have NO events logged
-        self.assertEqual(ABTestEvent.objects.count(), 0, "GET request should NOT log exposure")
+        # Should have exactly ONE exposure, NO conversion
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count(), 1)
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_CONVERSION).count(), 0)
     
-    def test_first_click_logs_exposure_and_conversion(self):
-        """Test that first click logs both exposure and conversion."""
-        # Clear events
-        self.assertEqual(ABTestEvent.objects.count(), 0)
+    def test_reload_does_not_log_extra_exposure(self):
+        """Test that reloading does not log additional Exposure."""
+        browser_ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0"
         
-        # First, assign a variant via GET request (creates session assignment, NO exposure)
-        with patch('core.views.random.choice', return_value='kudos'):
-            response_get = self.client.get(self.abtest_url, **self.nav_headers)
-            self.assertEqual(response_get.status_code, 200)
-        
-        # GET should NOT create any events
-        self.assertEqual(ABTestEvent.objects.count(), 0)
-        
-        # POST to click endpoint - first click should log BOTH exposure and conversion
-        response = self.client.post(
-            self.click_url,
-            data={},
-            **self.ajax_headers
-        )
-        
-        self.assertEqual(response.status_code, 200, 
-                        f"Expected 200, got {response.status_code}. Response: {response.content.decode()[:200]}")
-        
-        # Should have exactly one exposure and one conversion
-        events = ABTestEvent.objects.all()
-        self.assertEqual(events.count(), 2)  # One exposure + one conversion
-        
-        # Verify exposure
-        exposure_event = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).first()
-        self.assertIsNotNone(exposure_event)
-        self.assertEqual(exposure_event.experiment_name, 'button_label_kudos_vs_thanks')
-        self.assertEqual(exposure_event.variant, 'kudos')
-        self.assertEqual(exposure_event.event_type, ABTestEvent.EVENT_TYPE_EXPOSURE)
-        self.assertEqual(exposure_event.endpoint, '/218b7ae/')
-        
-        # Verify conversion
-        conversion_event = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_CONVERSION).first()
-        self.assertIsNotNone(conversion_event)
-        self.assertEqual(conversion_event.experiment_name, 'button_label_kudos_vs_thanks')
-        self.assertEqual(conversion_event.variant, 'kudos')
-        self.assertEqual(conversion_event.event_type, ABTestEvent.EVENT_TYPE_CONVERSION)
-        self.assertEqual(conversion_event.endpoint, '/218b7ae/')
-    
-    def test_second_click_logs_only_conversion(self):
-        """Test that second click logs only conversion, not duplicate exposure."""
-        # Clear events
-        self.assertEqual(ABTestEvent.objects.count(), 0)
-        
-        # GET to assign variant (no events logged)
-        self.client.get(self.abtest_url, **self.nav_headers)
-        self.assertEqual(ABTestEvent.objects.count(), 0)
-        
-        # First click - logs exposure + conversion
-        response1 = self.client.post(self.click_url, data={}, **self.ajax_headers)
+        # First GET - logs one exposure
+        response1 = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
         self.assertEqual(response1.status_code, 200)
         self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count(), 1)
-        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_CONVERSION).count(), 1)
         
-        # Second click - logs ONLY conversion, NOT duplicate exposure
-        response2 = self.client.post(self.click_url, data={}, **self.ajax_headers)
+        # Second GET (reload) - should NOT log additional exposure
+        response2 = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
         self.assertEqual(response2.status_code, 200)
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count(), 1, "Reload should not create duplicate exposure")
+    
+    def test_click_logs_conversion_without_extra_exposure(self):
+        """Test that click logs conversion without creating extra exposure."""
+        browser_ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0"
         
-        # Should still have exactly 1 exposure, but now 2 conversions
+        # GET - logs one exposure
+        response_get = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
+        self.assertEqual(response_get.status_code, 200)
         self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count(), 1)
-        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_CONVERSION).count(), 2)
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_CONVERSION).count(), 0)
+        
+        # POST click - logs conversion only, NO new exposure
+        response_click = self.client.post(self.click_url, data={})
+        self.assertEqual(response_click.status_code, 200)
+        
+        # Should still have exactly 1 exposure, and now 1 conversion
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count(), 1)
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_CONVERSION).count(), 1)
     
     def test_click_endpoint_uses_session_variant_not_post_data(self):
         """Test that click endpoint uses session variant, ignoring untrusted POST data."""
@@ -318,35 +285,34 @@ class ABTestIntegrationTest(TestCase):
         }
         ABTestEvent.objects.all().delete()
     
-    def test_full_flow_no_exposure_on_get_then_exposure_and_conversion_on_click(self):
-        """Test full flow: NO exposure on GET, then exposure + conversion on first click."""
+    def test_full_flow_exposure_on_get_then_conversion_on_click(self):
+        """Test full flow: exposure on GET, then conversion on click."""
+        browser_ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0"
         # Clear DB
         self.assertEqual(ABTestEvent.objects.count(), 0)
         
-        # Step 1: GET the A/B test page - should NOT log exposure
-        response = self.client.get(self.abtest_url, **self.nav_headers)
+        # Step 1: GET the A/B test page - should log ONE exposure
+        response = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
         self.assertEqual(response.status_code, 200)
         
         # Get variant from response context
         variant = response.context['variant']
         self.assertIn(variant, ['kudos', 'thanks'])
         
-        # Should have NO events from GET
-        self.assertEqual(ABTestEvent.objects.count(), 0, "GET should not log exposure")
+        # Should have ONE exposure from GET, NO conversion
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count(), 1)
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_CONVERSION).count(), 0)
         
-        # Step 2: First click - should log BOTH exposure and conversion
+        # Step 2: Click - should log conversion only (no new exposure)
         response_click = self.client.post(
             self.click_url,
             data={},
-            **self.ajax_headers
         )
         
         self.assertEqual(response_click.status_code, 200,
                         f"Expected 200, got {response_click.status_code}. Response: {response_click.content.decode()[:200]}")
         
-        # Should now have exactly one exposure and one conversion (both from click)
-        self.assertEqual(ABTestEvent.objects.count(), 2)
-        
+        # Should now have exactly one exposure (from GET) and one conversion (from click)
         exposure_events = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE)
         self.assertEqual(exposure_events.count(), 1)
         
@@ -370,30 +336,27 @@ class ABTestIntegrationTest(TestCase):
         self.assertEqual(exposure_event.variant, conversion_event.variant)
         self.assertEqual(exposure_event.experiment_name, conversion_event.experiment_name)
     
-    def test_multiple_gets_never_log_exposure(self):
-        """Test that multiple GET requests never log exposure."""
-        nav_headers = {
-            'HTTP_USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'HTTP_SEC_FETCH_DEST': 'document',
-            'HTTP_SEC_FETCH_MODE': 'navigate',
-            'HTTP_SEC_FETCH_SITE': 'same-origin',
-        }
+    def test_reload_does_not_log_extra_exposure(self):
+        """Test that reloading does not log additional Exposure."""
+        browser_ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0"
         
-        # Multiple GET requests - should never log exposure
-        response1 = self.client.get(self.abtest_url, **nav_headers)
+        # First GET - logs one exposure
+        response1 = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
         variant1 = response1.context['variant']
         self.assertIn(variant1, ['kudos', 'thanks'])
-        self.assertEqual(ABTestEvent.objects.count(), 0, "First GET should not log exposure")
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count(), 1)
         
-        response2 = self.client.get(self.abtest_url, **nav_headers)
+        # Second GET (reload) - should NOT log additional exposure
+        response2 = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
         variant2 = response2.context['variant']
         self.assertEqual(variant1, variant2)
-        self.assertEqual(ABTestEvent.objects.count(), 0, "Second GET should not log exposure")
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count(), 1, "Reload should not create duplicate exposure")
         
-        response3 = self.client.get(self.abtest_url, **nav_headers)
+        # Third GET - still only one exposure
+        response3 = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
         variant3 = response3.context['variant']
         self.assertEqual(variant1, variant3)
-        self.assertEqual(ABTestEvent.objects.count(), 0, "Third GET should not log exposure")
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count(), 1, "Third GET should not create duplicate exposure")
 
 
 class ABTestPublicAccessTest(TestCase):

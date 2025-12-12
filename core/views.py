@@ -476,24 +476,53 @@ def health_check(request):
     return JsonResponse(response_data, status=http_status)
 
 
-def abtest_view(request):
+def abtest_view(request, endpoint_hash):
     """
-    GET request to render the A/B test page.
-    NO exposure logging happens here anymore.
-    Variant is assigned ONLY if not already stored in session.
+    A/B test page view.
+
+    Behavior:
+    - GET only.
+    - On first real browser visit per session: assign variant + log ONE Exposure.
+    - On reloads in the same session: do NOT log additional Exposure.
     """
+    from .models import ABTestEvent
+    
     if request.method != "GET":
         return HttpResponseNotAllowed(["GET"])
     
     experiment_name = "button_label_kudos_vs_thanks"
     session_key_variant = f"abexp:{experiment_name}:variant"
-    endpoint_hash = "218b7ae"  # Extract from path or use hardcoded value
+    session_key_exposed = f"abexp:{experiment_name}:exposed"
     
-    # Assign variant ONCE per session
+    # Ensure we have a session
+    if not request.session.session_key:
+        request.session.save()
+    session_id = request.session.session_key
+    
+    # Very simple bot / health-check filter: require a browser-like UA
+    ua = (request.META.get("HTTP_USER_AGENT") or "").lower()
+    is_browser = (
+        "mozilla" in ua
+        and not any(bad in ua for bad in ["bot", "spider", "crawler", "curl", "python", "uptime", "httpclient"])
+    )
+    
+    # 1) Assign variant once per session
     variant = request.session.get(session_key_variant)
     if not variant:
         variant = random.choice(["kudos", "thanks"])
         request.session[session_key_variant] = variant
+        request.session.modified = True
+    
+    # 2) Log ONE exposure on first real browser page load
+    if is_browser and not request.session.get(session_key_exposed):
+        ABTestEvent.objects.get_or_create(
+            experiment_name=experiment_name,
+            event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
+            endpoint=f"/{endpoint_hash}/",
+            session_id=session_id,
+            defaults={"variant": variant},
+        )
+        request.session[session_key_exposed] = True
         request.session.modified = True
     
     # Team information for display
@@ -503,6 +532,7 @@ def abtest_view(request):
         "Denise Wu ( super-giraffe )",
     ]
     
+    # 3) Render page
     return render(
         request,
         "core/abtest.html",
@@ -517,43 +547,35 @@ def abtest_view(request):
 
 @csrf_exempt
 @require_POST
-def abtest_click(request):
+def abtest_click(request, endpoint_hash):
     """
-    Logs BOTH exposure (first-time only) and conversion (every click).
+    A/B test click handler.
+
+    Behavior:
+    - POST only.
+    - Logs Conversion on every click.
+    - Does NOT log Exposure here.
+    - Uses session-stored variant; if missing, assigns one but does not log exposure.
     """
     from .models import ABTestEvent
     
     experiment_name = "button_label_kudos_vs_thanks"
     session_key_variant = f"abexp:{experiment_name}:variant"
-    session_key_exposed = f"abexp:{experiment_name}:exposed"
-    endpoint_hash = "218b7ae"  # Extract from path or use hardcoded value
     
-    # Require variant to exist. If not, assign it here.
+    # Ensure we have a session
+    if not request.session.session_key:
+        request.session.save()
+    session_id = request.session.session_key
+    
+    # Variant should already be assigned by abtest_view;
+    # if not (edge case), assign it, but do NOT log exposure here.
     variant = request.session.get(session_key_variant)
     if not variant:
         variant = random.choice(["kudos", "thanks"])
         request.session[session_key_variant] = variant
         request.session.modified = True
     
-    # Get session_id for DB consistency
-    session_id = request.session.session_key
-    if not session_id:
-        request.session.save()
-        session_id = request.session.session_key
-    
-    # 1) Exposure (ONLY FIRST CLICK EVER)
-    if not request.session.get(session_key_exposed):
-        ABTestEvent.objects.get_or_create(
-            experiment_name=experiment_name,
-            event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
-            endpoint=f"/{endpoint_hash}/",
-            session_id=session_id,
-            defaults={"variant": variant},
-        )
-        request.session[session_key_exposed] = True
-        request.session.modified = True
-    
-    # 2) Conversion (log on EVERY click)
+    # Log Conversion ONLY
     ABTestEvent.objects.create(
         experiment_name=experiment_name,
         event_type=ABTestEvent.EVENT_TYPE_CONVERSION,

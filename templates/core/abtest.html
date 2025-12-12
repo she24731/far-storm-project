@@ -59,7 +59,7 @@
           });
         }
         
-        // Server-side logging (Django) - logs both exposure (first time) and conversion
+        // Server-side logging (Django) - logs conversion only
         const csrftoken = getCookie('csrftoken');
         fetch("/{{ endpoint_hash }}/click/", {
           method: "POST",
