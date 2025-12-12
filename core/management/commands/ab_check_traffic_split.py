@@ -38,7 +38,7 @@ class Command(BaseCommand):
         event_type = options['event_type']
         exclude_forced = options['exclude_forced']
 
-        self.stdout.write(self.style.SUCCESS(f'\n=== A/B Test Traffic Split Analysis ==='))
+        self.stdout.write(self.style.SUCCESS('\n=== A/B Test Traffic Split Analysis ==='))
         self.stdout.write(f'Experiment: {experiment_name}')
         self.stdout.write(f'Event Type: {event_type}')
         self.stdout.write(f'Exclude Forced: {exclude_forced}\n')

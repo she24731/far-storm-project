@@ -41,7 +41,7 @@ class Command(BaseCommand):
         exclude_forced = options['exclude_forced']
         confidence_level = options['confidence_level']
 
-        self.stdout.write(self.style.SUCCESS(f'\n=== A/B Test Statistical Analysis ==='))
+        self.stdout.write(self.style.SUCCESS('\n=== A/B Test Statistical Analysis ==='))
         self.stdout.write(f'Experiment: {experiment_name}')
         self.stdout.write(f'Confidence Level: {confidence_level * 100:.1f}%')
         self.stdout.write(f'Exclude Forced: {exclude_forced}\n')
@@ -242,7 +242,7 @@ class Command(BaseCommand):
                 'could be due to random chance'
             )
             self.stdout.write(
-                f'• Recommendation: Continue testing or consider that variants '
+                '• Recommendation: Continue testing or consider that variants '
                 'may be equivalent'
             )
             

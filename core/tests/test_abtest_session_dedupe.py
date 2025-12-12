@@ -179,7 +179,7 @@ class ABTestSessionAssignmentTest(TestCase):
         browser_ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0"
         
         # First GET - creates exposure
-        response1 = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
+        self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
         self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count(), 1)
         
         # Second GET (reload) - should NOT create duplicate exposure
