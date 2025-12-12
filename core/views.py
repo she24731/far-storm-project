@@ -542,6 +542,7 @@ def abtest_view(request):
         request.session.modified = True
     
     # 2) Log ONE exposure on first real browser page load
+    fire_ga_exposure = False
     if is_real_navigation and not request.session.get(session_key_exposed):
         ABTestEvent.objects.get_or_create(
             experiment_name=experiment_name,
@@ -552,6 +553,7 @@ def abtest_view(request):
         )
         request.session[session_key_exposed] = True
         request.session.modified = True
+        fire_ga_exposure = True
     
     # Team information for display
     team_members = [
@@ -569,6 +571,7 @@ def abtest_view(request):
             "experiment_name": experiment_name,
             "endpoint_hash": "218b7ae",
             "team_members": team_members,
+            "fire_ga_exposure": fire_ga_exposure,
         },
     )
     

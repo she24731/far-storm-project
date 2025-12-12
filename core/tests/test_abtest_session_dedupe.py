@@ -310,6 +310,25 @@ class ABTestSessionAssignmentTest(TestCase):
                     # When variant is 'thanks', button should NOT show 'kudos'
                     self.assertNotIn('kudos', button_html2.lower())
     
+    def test_ga_exposure_fires_only_on_first_visit(self):
+        """Test that GA ab_exposure event script is included only on first visit, not on reload."""
+        browser_ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0"
+        
+        # First GET - should include ab_exposure script
+        response1 = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
+        content1 = response1.content.decode()
+        
+        # Should have ab_exposure script on first visit
+        self.assertIn('ab_exposure', content1, "First visit should include ab_exposure GA event script")
+        self.assertIn('gtag("event", "ab_exposure"', content1)
+        
+        # Second GET (reload) - should NOT include ab_exposure script
+        response2 = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
+        content2 = response2.content.decode()
+        
+        # Should NOT have ab_exposure script on reload
+        self.assertNotIn('gtag("event", "ab_exposure"', content2, "Reload should NOT include ab_exposure GA event script")
+    
     def test_browser_get_without_sec_fetch_still_logs_exposure(self):
         """Test that browser GET without Sec-Fetch headers still logs exposure."""
         # Browser UA is sufficient, Sec-Fetch headers not required
