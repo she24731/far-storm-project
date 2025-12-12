@@ -18,8 +18,12 @@
     </ul>
     
     <div class="mt-4">
-      <button id="abtest" class="btn btn-primary" data-variant="{{ variant }}">
-        {{ variant }}
+      <button id="abtest" class="btn btn-primary">
+        {% if variant == "kudos" %}
+          kudos
+        {% else %}
+          thanks
+        {% endif %}
       </button>
     </div>
   </div>
@@ -75,6 +79,7 @@
           }
           
           // Server-side logging (Django) - must remain intact
+          // Note: Variant is determined server-side from session, not from POST body
           const csrftoken = getCookie('csrftoken');
           fetch('/218b7ae/click/', {
             method: 'POST',
@@ -82,7 +87,7 @@
               'Content-Type': 'application/x-www-form-urlencoded',
               'X-CSRFToken': csrftoken || ''
             },
-            body: 'variant=' + encodeURIComponent(variant)
+            body: ''  // No variant in body - server uses session
           }).catch(function(err) {
             // Silently fail if server-side logging fails
             console.debug('A/B test click logging failed:', err);
