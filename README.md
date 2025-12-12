@@ -351,6 +351,27 @@ The A/B test endpoint serves as both an analytics endpoint and experimentation p
 
 **Endpoint:** `/218b7ae/` (derived from first 7 characters of SHA1("far-storm"))
 
+**How to Compute the Endpoint Hash:**
+
+The endpoint `/218b7ae/` is derived from the first 7 characters of the SHA1 hash of the team nickname "far-storm".
+
+**Python:**
+```python
+import hashlib
+hash_value = hashlib.sha1("far-storm".encode()).hexdigest()[:7]
+print(hash_value)  # Output: 218b7ae
+```
+
+**Command Line (macOS/Linux):**
+```bash
+echo -n "far-storm" | shasum -a 1 | cut -c1-7
+# Output: 218b7ae
+```
+
+**Access the Endpoint:**
+- Production: https://yale-newcomer-survival-guide.onrender.com/218b7ae/
+- Local Development: http://127.0.0.1:8000/218b7ae/
+
 **Variants:** Two button label variants tested:
 - **"kudos"**: Button displays text "kudos"
 - **"thanks"**: Button displays text "thanks"
@@ -528,6 +549,26 @@ Per course policy, all team members share equal responsibility for project outco
    - Application: http://127.0.0.1:8000
    - Admin interface: http://127.0.0.1:8000/admin/
    - A/B test endpoint: http://127.0.0.1:8000/218b7ae/
+
+---
+
+## Screenshots
+
+### Project Board Views
+
+The project uses GitHub Projects for Agile project management. The following screenshots demonstrate different views of the project board:
+
+**Product Backlog View:**
+![Product Backlog View](docs/screenshots/product-backlog.png)
+Shows the filtered Product Backlog view with user stories, their status, priority, and story points. Demonstrates the backlog organization with filter `label:"user story"` applied.
+
+**Sprint Backlog View:**
+![Sprint Backlog View](docs/screenshots/sprint-backlog.png)
+Shows the Sprint Backlog view filtered to show current sprint items (`Sprint:@current`) with user story label. Displays tasks in their current status (Done, In review, To Do) with assignees and priorities.
+
+**Task Board View (Kanban):**
+![Task Board View](docs/screenshots/task-board.png)
+Shows the Kanban-style Task Board view with columns for "To Do", "In progress", "In review", and "Done". Demonstrates the workflow visualization and task status tracking for the current sprint.
 
 ---
 
