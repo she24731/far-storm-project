@@ -587,6 +587,8 @@ def abtest_view(request):
 
 @csrf_exempt
 @require_POST
+@never_cache
+@vary_on_headers("Cookie")
 def abtest_click(request):
     """
     A/B test click handler.
