@@ -12,7 +12,9 @@
 {% endblock %}
 
 {% block content %}
-<h1>{{ title }}</h1>
+<div id="content-main">
+  <h1>{{ title }}</h1>
+  {# REMOVE ANY OTHER <h1> A/B Test Summary #}
 
 {% if summary_data %}
     <table class="adminlist" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
@@ -61,6 +63,7 @@
 
 <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
     <a href="{% url 'admin:core_abtestevent_changelist' %}" class="button">← Back to AB Test Events</a>
+</div>
 </div>
 {% endblock %}
 

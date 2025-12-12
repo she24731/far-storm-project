@@ -15,17 +15,19 @@ BROWSER_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36
 def get_navigation_headers():
     """Get realistic Sec-Fetch headers for navigation requests."""
     return {
+        'HTTP_USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'HTTP_SEC_FETCH_DEST': 'document',
         'HTTP_SEC_FETCH_MODE': 'navigate',
-        'HTTP_SEC_FETCH_SITE': 'none',
-        'HTTP_USER_AGENT': BROWSER_UA,
+        'HTTP_SEC_FETCH_SITE': 'same-origin',
     }
 
 
 def get_ajax_headers():
     """Get realistic headers for AJAX POST requests."""
     return {
-        'HTTP_USER_AGENT': BROWSER_UA,
+        'HTTP_USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'HTTP_SEC_FETCH_MODE': 'cors',
+        'HTTP_SEC_FETCH_SITE': 'same-origin',
         'HTTP_X_REQUESTED_WITH': 'XMLHttpRequest',
     }
 
@@ -253,12 +255,13 @@ class ABTestSessionAssignmentTest(TestCase):
     
     def test_non_navigation_requests_do_not_log_exposure(self):
         """Test that prefetch/background requests do not log exposure."""
-        # Request without Sec-Fetch headers (or with non-navigation values)
+        # Request with non-navigation Sec-Fetch values
         response = self.client.get(
             self.abtest_url,
-            HTTP_USER_AGENT=BROWSER_UA,
+            HTTP_USER_AGENT='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             HTTP_SEC_FETCH_DEST='image',  # Not a navigation
             HTTP_SEC_FETCH_MODE='no-cors',
+            HTTP_SEC_FETCH_SITE='cross-site',
         )
         self.assertEqual(response.status_code, 200)  # Page still renders
         
@@ -331,3 +334,78 @@ class ABTestSessionAssignmentTest(TestCase):
                     self.assertIn('thanks', button_html2.lower())
                     # When variant is 'thanks', button should NOT show 'kudos'
                     self.assertNotIn('kudos', button_html2.lower())
+    
+    def test_get_without_sec_fetch_headers_no_exposure(self):
+        """Test that GET without Sec-Fetch headers does not create exposure."""
+        # Request with browser UA but no Sec-Fetch headers
+        response = self.client.get(
+            self.abtest_url,
+            HTTP_USER_AGENT='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        )
+        self.assertEqual(response.status_code, 200)  # Page still renders
+        
+        # But should NOT have logged exposure
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count(), 0)
+    
+    def test_get_with_curl_ua_no_exposure(self):
+        """Test that GET with curl UA does not create exposure."""
+        response = self.client.get(
+            self.abtest_url,
+            HTTP_USER_AGENT='curl/8.6.0',
+            HTTP_SEC_FETCH_DEST='document',
+            HTTP_SEC_FETCH_MODE='navigate',
+            HTTP_SEC_FETCH_SITE='same-origin',
+        )
+        self.assertEqual(response.status_code, 200)  # Page still renders
+        
+        # But should NOT have logged exposure (curl is detected as bot)
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count(), 0)
+    
+    def test_post_without_sec_fetch_headers_no_conversion(self):
+        """Test that POST without Sec-Fetch headers does not create conversion."""
+        headers = get_navigation_headers()
+        # First create exposure
+        self.client.get(self.abtest_url, **headers)
+        
+        # POST without Sec-Fetch headers
+        response = self.client.post(
+            self.click_url,
+            data={},
+            HTTP_USER_AGENT='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        )
+        self.assertEqual(response.status_code, 200)
+        
+        # Should have exposure but no conversion (skipped due to missing Sec-Fetch)
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count(), 1)
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_CONVERSION).count(), 0)
+        
+        # Response should indicate skipped
+        import json
+        data = json.loads(response.content)
+        self.assertEqual(data.get('status'), 'skipped')
+    
+    def test_normal_browser_flow_one_exposure_one_conversion(self):
+        """Test that normal browser flow produces exactly 1 exposure + 1 conversion."""
+        headers = get_navigation_headers()
+        ajax_headers = get_ajax_headers()
+        
+        # GET - creates exposure
+        response1 = self.client.get(self.abtest_url, **headers)
+        self.assertEqual(response1.status_code, 200)
+        
+        # Should have exactly one exposure
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count(), 1)
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_CONVERSION).count(), 0)
+        
+        # POST - creates conversion
+        response2 = self.client.post(self.click_url, data={}, **ajax_headers)
+        self.assertEqual(response2.status_code, 200)
+        
+        # Should have exactly one exposure and one conversion
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).count(), 1)
+        self.assertEqual(ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_CONVERSION).count(), 1)
+        
+        # Variants should match
+        exposure = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_EXPOSURE).first()
+        conversion = ABTestEvent.objects.filter(event_type=ABTestEvent.EVENT_TYPE_CONVERSION).first()
+        self.assertEqual(exposure.variant, conversion.variant)

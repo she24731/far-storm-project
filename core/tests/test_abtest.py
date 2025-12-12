@@ -30,15 +30,21 @@ class ABTestVariantSelectionTest(TestCase):
         self.client = Client()
         self.abtest_url = '/218b7ae/'
         self.browser_ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        self.nav_headers = {
+            'HTTP_USER_AGENT': self.browser_ua,
+            'HTTP_SEC_FETCH_DEST': 'document',
+            'HTTP_SEC_FETCH_MODE': 'navigate',
+            'HTTP_SEC_FETCH_SITE': 'same-origin',
+        }
     
     def test_force_variant_a_overrides_session(self):
         """Test that ?force_variant=a overrides session assignment."""
         # First assign a variant via normal flow
-        response1 = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
+        response1 = self.client.get(self.abtest_url, **self.nav_headers)
         session_variant = response1.context['variant']
         
         # Request with force_variant=a should override to 'kudos'
-        response = self.client.get(f'{self.abtest_url}?force_variant=a', HTTP_USER_AGENT=self.browser_ua)
+        response = self.client.get(f'{self.abtest_url}?force_variant=a', **self.nav_headers)
         
         self.assertEqual(response.status_code, 200)
         
@@ -48,10 +54,10 @@ class ABTestVariantSelectionTest(TestCase):
     def test_force_variant_b_overrides_session(self):
         """Test that ?force_variant=b overrides session assignment."""
         # First assign a variant via normal flow
-        response1 = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
+        response1 = self.client.get(self.abtest_url, **self.nav_headers)
         
         # Request with force_variant=b should override to 'thanks'
-        response = self.client.get(f'{self.abtest_url}?force_variant=b', HTTP_USER_AGENT=self.browser_ua)
+        response = self.client.get(f'{self.abtest_url}?force_variant=b', **self.nav_headers)
         
         self.assertEqual(response.status_code, 200)
         
@@ -61,7 +67,7 @@ class ABTestVariantSelectionTest(TestCase):
     def test_session_persists_variant(self):
         """Test that session persists variant across requests."""
         # First request without force param
-        response1 = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
+        response1 = self.client.get(self.abtest_url, **self.nav_headers)
         self.assertEqual(response1.status_code, 200)
         
         # Get variant from first response
@@ -69,7 +75,7 @@ class ABTestVariantSelectionTest(TestCase):
         self.assertIn(variant1, ['kudos', 'thanks'])
         
         # Second request (same session) - should keep same variant
-        response2 = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
+        response2 = self.client.get(self.abtest_url, **self.nav_headers)
         self.assertEqual(response2.status_code, 200)
         
         # Variant should be the same
@@ -83,14 +89,14 @@ class ABTestVariantSelectionTest(TestCase):
         mock_choice.return_value = 'kudos'
         
         # First request - should use mocked random.choice
-        response = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
+        response = self.client.get(self.abtest_url, **self.nav_headers)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['variant'], 'kudos')
         mock_choice.assert_called_once_with(['kudos', 'thanks'])
         
         # Second request - should NOT call random.choice again (uses session)
         mock_choice.reset_mock()
-        response2 = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
+        response2 = self.client.get(self.abtest_url, **self.nav_headers)
         self.assertEqual(response2.status_code, 200)
         self.assertEqual(response2.context['variant'], 'kudos')
         mock_choice.assert_not_called()  # Should use session, not random
@@ -102,12 +108,12 @@ class ABTestVariantSelectionTest(TestCase):
         mock_choice.return_value = 'thanks'
         
         # First request
-        response = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
+        response = self.client.get(self.abtest_url, **self.nav_headers)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['variant'], 'thanks')
         
         # Verify it's stored in session by checking a second request
-        response2 = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
+        response2 = self.client.get(self.abtest_url, **self.nav_headers)
         self.assertEqual(response2.context['variant'], 'thanks')
     
     def test_random_assignment_produces_both_variants_over_many_requests(self):
@@ -118,8 +124,13 @@ class ABTestVariantSelectionTest(TestCase):
         # Make 50 requests with new clients (new sessions) each time
         for _ in range(50):
             client = Client()  # New client = new session
-            browser_ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            response = client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
+            nav_headers = {
+                'HTTP_USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'HTTP_SEC_FETCH_DEST': 'document',
+                'HTTP_SEC_FETCH_MODE': 'navigate',
+                'HTTP_SEC_FETCH_SITE': 'same-origin',
+            }
+            response = client.get(self.abtest_url, **nav_headers)
             self.assertEqual(response.status_code, 200)
             
             variant = response.context['variant']
@@ -142,8 +153,19 @@ class ABTestEventLoggingTest(TestCase):
         self.client = Client()
         self.abtest_url = '/218b7ae/'
         self.click_url = '/218b7ae/click/'
-        # Browser User-Agent for tests (to pass bot filtering)
+        # Browser User-Agent and headers for tests (to pass bot filtering)
         self.browser_ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        self.nav_headers = {
+            'HTTP_USER_AGENT': self.browser_ua,
+            'HTTP_SEC_FETCH_DEST': 'document',
+            'HTTP_SEC_FETCH_MODE': 'navigate',
+            'HTTP_SEC_FETCH_SITE': 'same-origin',
+        }
+        self.ajax_headers = {
+            'HTTP_USER_AGENT': self.browser_ua,
+            'HTTP_SEC_FETCH_MODE': 'cors',
+            'HTTP_SEC_FETCH_SITE': 'same-origin',
+        }
         # Clear all events before each test
         ABTestEvent.objects.all().delete()
     
@@ -160,8 +182,8 @@ class ABTestEventLoggingTest(TestCase):
         # So we need to test without force_variant
         ABTestEvent.objects.all().delete()
         
-        # GET without force_variant (normal flow) - with browser User-Agent
-        response = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
+        # GET without force_variant (normal flow) - with browser User-Agent and Sec-Fetch headers
+        response = self.client.get(self.abtest_url, **self.nav_headers)
         self.assertEqual(response.status_code, 200)
         
         # Should have exactly one exposure event
@@ -181,14 +203,14 @@ class ABTestEventLoggingTest(TestCase):
         
         # First, assign a variant via GET request (creates session assignment)
         with patch('core.views.random.choice', return_value='kudos'):
-            response_get = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
+            response_get = self.client.get(self.abtest_url, **self.nav_headers)
             self.assertEqual(response_get.status_code, 200)
         
         # POST to click endpoint - variant comes from session, not POST data
         response = self.client.post(
             self.click_url,
             data={},  # No variant in POST - uses session variant
-            HTTP_USER_AGENT=self.browser_ua
+            **self.ajax_headers
         )
         
         self.assertEqual(response.status_code, 200, 
@@ -213,7 +235,7 @@ class ABTestEventLoggingTest(TestCase):
         
         # First, assign 'thanks' variant via GET request (creates session assignment)
         with patch('core.views.random.choice', return_value='thanks'):
-            response_get = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
+            response_get = self.client.get(self.abtest_url, **self.nav_headers)
             self.assertEqual(response_get.status_code, 200)
             self.assertEqual(response_get.context['variant'], 'thanks')
         
@@ -221,7 +243,7 @@ class ABTestEventLoggingTest(TestCase):
         response = self.client.post(
             self.click_url,
             data={},  # No variant in POST - uses session variant
-            HTTP_USER_AGENT=self.browser_ua
+            **self.ajax_headers
         )
         
         self.assertEqual(response.status_code, 200,
@@ -239,10 +261,20 @@ class ABTestEventLoggingTest(TestCase):
     
     def test_click_endpoint_uses_session_variant_not_post_data(self):
         """Test that click endpoint uses session variant, ignoring untrusted POST data."""
-        browser_ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        nav_headers = {
+            'HTTP_USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'HTTP_SEC_FETCH_DEST': 'document',
+            'HTTP_SEC_FETCH_MODE': 'navigate',
+            'HTTP_SEC_FETCH_SITE': 'same-origin',
+        }
+        ajax_headers = {
+            'HTTP_USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'HTTP_SEC_FETCH_MODE': 'cors',
+            'HTTP_SEC_FETCH_SITE': 'same-origin',
+        }
         
         # First, assign a variant via GET request
-        response = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
+        response = self.client.get(self.abtest_url, **nav_headers)
         session_variant = response.context['variant']
         self.assertIn(session_variant, ['kudos', 'thanks'])
         
@@ -251,7 +283,7 @@ class ABTestEventLoggingTest(TestCase):
         response_click = self.client.post(
             self.click_url,
             data={'variant': wrong_variant},  # Wrong variant in POST data
-            HTTP_USER_AGENT=browser_ua
+            **ajax_headers
         )
         
         # Should succeed (200) because variant comes from session, not POST
@@ -282,8 +314,19 @@ class ABTestIntegrationTest(TestCase):
         self.client = Client()
         self.abtest_url = '/218b7ae/'
         self.click_url = '/218b7ae/click/'
-        # Browser User-Agent for tests (to pass bot filtering)
+        # Browser User-Agent and headers for tests (to pass bot filtering)
         self.browser_ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        self.nav_headers = {
+            'HTTP_USER_AGENT': self.browser_ua,
+            'HTTP_SEC_FETCH_DEST': 'document',
+            'HTTP_SEC_FETCH_MODE': 'navigate',
+            'HTTP_SEC_FETCH_SITE': 'same-origin',
+        }
+        self.ajax_headers = {
+            'HTTP_USER_AGENT': self.browser_ua,
+            'HTTP_SEC_FETCH_MODE': 'cors',
+            'HTTP_SEC_FETCH_SITE': 'same-origin',
+        }
         ABTestEvent.objects.all().delete()
     
     def test_full_flow_exposure_then_conversion(self):
@@ -291,8 +334,8 @@ class ABTestIntegrationTest(TestCase):
         # Clear DB
         self.assertEqual(ABTestEvent.objects.count(), 0)
         
-        # Step 1: GET the A/B test page (no force param, no cookie) - with browser User-Agent
-        response = self.client.get(self.abtest_url, HTTP_USER_AGENT=self.browser_ua)
+        # Step 1: GET the A/B test page (no force param, no cookie) - with browser User-Agent and Sec-Fetch headers
+        response = self.client.get(self.abtest_url, **self.nav_headers)
         self.assertEqual(response.status_code, 200)
         
         # Get variant from response context
@@ -319,7 +362,7 @@ class ABTestIntegrationTest(TestCase):
         response_click = self.client.post(
             self.click_url,
             data={},  # Don't send variant in POST - it should come from session
-            HTTP_USER_AGENT=self.browser_ua
+            **self.ajax_headers
         )
         
         self.assertEqual(response_click.status_code, 200,
@@ -343,10 +386,15 @@ class ABTestIntegrationTest(TestCase):
     
     def test_no_multiple_exposures_same_session(self):
         """Test that multiple page views in same session log only ONE exposure."""
-        browser_ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        nav_headers = {
+            'HTTP_USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'HTTP_SEC_FETCH_DEST': 'document',
+            'HTTP_SEC_FETCH_MODE': 'navigate',
+            'HTTP_SEC_FETCH_SITE': 'same-origin',
+        }
         
         # First request - should log one exposure
-        response1 = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
+        response1 = self.client.get(self.abtest_url, **nav_headers)
         variant1 = response1.context['variant']
         self.assertIn(variant1, ['kudos', 'thanks'])
         
@@ -355,7 +403,7 @@ class ABTestIntegrationTest(TestCase):
         self.assertEqual(exposure_count_1, 1)
         
         # Second request (same session) - should NOT log another exposure
-        response2 = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
+        response2 = self.client.get(self.abtest_url, **nav_headers)
         variant2 = response2.context['variant']
         
         # Variant should be the same
@@ -366,7 +414,7 @@ class ABTestIntegrationTest(TestCase):
         self.assertEqual(exposure_count_2, 1, "Second page view should not create duplicate exposure")
         
         # Third request (same session) - should still NOT log another exposure
-        response3 = self.client.get(self.abtest_url, HTTP_USER_AGENT=browser_ua)
+        response3 = self.client.get(self.abtest_url, **nav_headers)
         variant3 = response3.context['variant']
         
         # Variant should still be the same

@@ -12,7 +12,7 @@ from django.contrib.auth.models import Group
 from django.contrib import messages
 from django.db.models import Q
 from django.utils import timezone
-from django.http import JsonResponse, HttpResponseNotAllowed
+from django.http import JsonResponse, HttpResponseNotAllowed, HttpRequest
 from django.views.decorators.csrf import csrf_exempt
 import random
 from .models import Category, Post, Bookmark, ExternalLink
@@ -29,6 +29,70 @@ def _ab_session_variant_key(experiment_name: str) -> str:
 def _ab_session_exposed_key(experiment_name: str, endpoint: str) -> str:
     """Generate session key for tracking exposure per experiment+endpoint."""
     return f"abexp:{experiment_name}:exposed:{endpoint}"
+
+
+def is_bot_request(request: HttpRequest) -> bool:
+    """Strict fail-closed bot detection."""
+    ua = (request.META.get("HTTP_USER_AGENT") or "").lower()
+    
+    # No UA = treat as bot
+    if not ua:
+        return True
+    
+    # Must look like a real browser
+    browser_signatures = ["chrome", "safari", "firefox", "edg", "opr"]
+    if "mozilla" not in ua or not any(sig in ua for sig in browser_signatures):
+        return True
+    
+    # Known bot/monitor/HTTP client signatures
+    bot_keywords = [
+        "bot", "spider", "crawler", "scraper",
+        "render", "uptime", "health", "monitor",
+        "pingdom", "statuscake", "github", "gitlab",
+        "curl", "python-requests", "httpclient", "go-http-client",
+    ]
+    if any(k in ua for k in bot_keywords):
+        return True
+    
+    return False
+
+
+def _is_navigation_request(request: HttpRequest) -> bool:
+    """Check if request is a real navigation (not prefetch/background)."""
+    dest = (request.META.get("HTTP_SEC_FETCH_DEST") or "").lower()
+    mode = (request.META.get("HTTP_SEC_FETCH_MODE") or "").lower()
+    site = (request.META.get("HTTP_SEC_FETCH_SITE") or "").lower()
+    
+    if not dest or not mode or not site:
+        return False
+    
+    if dest not in {"document", "iframe"}:
+        return False
+    
+    if mode != "navigate":
+        return False
+    
+    if site not in {"same-origin", "none"}:
+        return False
+    
+    return True
+
+
+def _is_click_request(request: HttpRequest) -> bool:
+    """Check if request is a real click (not background fetch)."""
+    mode = (request.META.get("HTTP_SEC_FETCH_MODE") or "").lower()
+    site = (request.META.get("HTTP_SEC_FETCH_SITE") or "").lower()
+    
+    if not mode or not site:
+        return False
+    
+    if site != "same-origin":
+        return False
+    
+    if mode not in {"cors", "same-origin"}:
+        return False
+    
+    return True
 
 
 def is_contributor(user):
@@ -453,30 +517,6 @@ def abtest_view(request):
     experiment_name = "button_label_kudos_vs_thanks"
     endpoint = request.path  # Use actual request path for consistency
     
-    # Helper function to detect bot requests
-    def is_bot_request(request):
-        """Check if request is from a bot or uptime checker."""
-        ua = request.META.get("HTTP_USER_AGENT", "").lower()
-        
-        # Block known bot/uptime check user agents
-        bot_keywords = [
-            "go-http-client", "render", "uptime", "health", "curl",
-            "python", "bot", "spider", "crawler", "scraper"
-        ]
-        if any(bad in ua for bad in bot_keywords):
-            return True
-        
-        # Block requests without User-Agent
-        if not request.META.get("HTTP_USER_AGENT"):
-            return True
-        
-        # Block non-browser clients - must contain browser keywords
-        real_browser_keywords = ["mozilla", "chrome", "safari", "firefox", "edge"]
-        if not any(k in ua for k in real_browser_keywords):
-            return True
-        
-        return False
-    
     # Ensure session has a session_key
     if not request.session.session_key:
         request.session.save()
@@ -485,17 +525,7 @@ def abtest_view(request):
     is_bot = is_bot_request(request)
     is_admin = request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)
     
-    # Check Sec-Fetch headers to distinguish real navigations from background fetches
-    # This prevents prefetch/img/script requests from polluting AB data
-    sec_fetch_dest = (request.headers.get("Sec-Fetch-Dest") or "").lower()
-    sec_fetch_mode = (request.headers.get("Sec-Fetch-Mode") or "").lower()
-    
-    is_navigation = (
-        sec_fetch_dest in ("document", "iframe", "")
-        and sec_fetch_mode in ("navigate", "same-origin", "")
-    )
-    
-    # For bots/admins or non-navigation requests, show default variant but don't log
+    # For bots/admins, show default variant but don't log
     # Debug forcing mechanism (for manual QA only)
     force_param = request.GET.get('force_variant', '').strip().lower()
     is_forced = False
@@ -520,41 +550,29 @@ def abtest_view(request):
             request.session[variant_key] = variant
             request.session.modified = True
     
-    # Log variant exposure server-side (only for real users, real navigations, once per session)
+    # Determine if we should log exposure
     should_log_exposure = (
-        not is_forced 
-        and not is_bot 
-        and not is_admin 
-        and request.session.session_key
-        and is_navigation
+        request.method == "GET"
+        and not is_bot_request(request)
+        and _is_navigation_request(request)
     )
     
     if should_log_exposure:
-        # Deduplication: Check session flag first (fast path)
+        # Use existing: session_flag + get_or_create
         exposed_key = _ab_session_exposed_key(experiment_name, endpoint)
-        session_exposed = bool(request.session.get(exposed_key))
-        
-        # Double-check with database (safe path) using get_or_create for atomicity
         session_id = request.session.session_key
         
-        if not session_exposed:
-            obj, created = ABTestEvent.objects.get_or_create(
+        if not request.session.get(exposed_key, False):
+            ABTestEvent.objects.get_or_create(
                 experiment_name=experiment_name,
-                variant=variant,
                 endpoint=endpoint,
                 session_id=session_id,
-                event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
-                defaults={
-                    "ip_address": request.META.get('REMOTE_ADDR'),
-                    "user_agent": request.META.get('HTTP_USER_AGENT', '')[:500],
-                    "user": request.user if request.user.is_authenticated else None,
-                    "is_forced": False,
-                }
+                event_type="exposure",
+                defaults={"variant": variant}
             )
-            if created:
-                # Mark as exposed in session to prevent future duplicates
-                request.session[exposed_key] = True
-                request.session.modified = True
+            request.session[exposed_key] = True
+            request.session.modified = True
+    # Else: skip logging but still render the page normally
     
     # Prepare context - variant is the canonical source of truth
     context = {
@@ -594,31 +612,7 @@ def abtest_click(request):
     
     # Only allow POST requests for button clicks
     if request.method != "POST":
-        return HttpResponseNotAllowed(["POST"])
-    
-    # Helper function to detect bot requests (same as abtest_view)
-    def is_bot_request(request):
-        """Check if request is from a bot or uptime checker."""
-        ua = request.META.get("HTTP_USER_AGENT", "").lower()
-        
-        # Block known bot/uptime check user agents
-        bot_keywords = [
-            "go-http-client", "render", "uptime", "health", "curl",
-            "python", "bot", "spider", "crawler", "scraper"
-        ]
-        if any(bad in ua for bad in bot_keywords):
-            return True
-        
-        # Block requests without User-Agent
-        if not request.META.get("HTTP_USER_AGENT"):
-            return True
-        
-        # Block non-browser clients - must contain browser keywords
-        real_browser_keywords = ["mozilla", "chrome", "safari", "firefox", "edge"]
-        if not any(k in ua for k in real_browser_keywords):
-            return True
-        
-        return False
+        return JsonResponse({"status": "method_not_allowed"}, status=405)
     
     experiment_name = "button_label_kudos_vs_thanks"
     endpoint = '/218b7ae/'  # Match the experiment page path
@@ -627,14 +621,11 @@ def abtest_click(request):
     if not request.session.session_key:
         request.session.save()
     
-    # Check for bot requests and skip conversion logging
-    is_bot = is_bot_request(request)
-    is_admin = request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)
+    # Skip bots & non-browser POSTs
+    if is_bot_request(request) or not _is_click_request(request):
+        return JsonResponse({"status": "skipped"}, status=200)
     
-    if is_bot or is_admin or not request.session.session_key:
-        return JsonResponse({'status': 'skipped'})
-    
-    # Get variant from session (NOT from untrusted POST data)
+    # Variant ONLY from session
     variant_key = _ab_session_variant_key(experiment_name)
     variant = request.session.get(variant_key)
     
@@ -645,8 +636,7 @@ def abtest_click(request):
     
     session_id = request.session.session_key
     
-    # Ensure exposure exists before logging conversion
-    # This prevents conversions without corresponding exposures
+    # Backfill exposure if missing
     exposure_qs = ABTestEvent.objects.filter(
         experiment_name=experiment_name,
         variant=variant,
@@ -671,7 +661,7 @@ def abtest_click(request):
             }
         )
     
-    # Now create conversion
+    # Then create exactly one conversion event
     try:
         ABTestEvent.objects.create(
             experiment_name=experiment_name,
