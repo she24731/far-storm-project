@@ -12,8 +12,10 @@ from core import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # A/B test endpoints - exact match only (NOT parameterized to prevent routing conflicts)
     path('218b7ae/', views.abtest_view, name='abtest'),  # A/B test endpoint for team far-storm
     path('218b7ae/click/', views.abtest_click, name='abtest_click'),  # A/B test click logging endpoint
+    # Core app URLs (includes login at /login/) - must come after A/B test routes
     path('', include('core.urls')),
 ]
 

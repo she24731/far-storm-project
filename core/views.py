@@ -484,8 +484,15 @@ def abtest_view(request):
     - GET only.
     - On first real browser visit per session: assign variant + log ONE Exposure.
     - On reloads in the same session: do NOT log additional Exposure.
+    
+    This view only handles /218b7ae/ - any other path should not reach here.
     """
+    from django.http import Http404
     from .models import ABTestEvent
+    
+    # Safety check: ensure we're on the correct path (defense against URL routing bugs)
+    if request.path != '/218b7ae/':
+        raise Http404("A/B test endpoint not found")
     
     if request.method != "GET":
         return HttpResponseNotAllowed(["GET"])
@@ -577,8 +584,15 @@ def abtest_click(request):
     - Logs Conversion on every click.
     - Backfills exposure if missing (only once).
     - Variant comes from session only (NOT from POST body).
+    
+    This view only handles /218b7ae/click/ - any other path should not reach here.
     """
+    from django.http import Http404
     from .models import ABTestEvent
+    
+    # Safety check: ensure we're on the correct path (defense against URL routing bugs)
+    if request.path != '/218b7ae/click/':
+        raise Http404("A/B test click endpoint not found")
     
     experiment_name = "button_label_kudos_vs_thanks"
     endpoint = "/218b7ae/"
