@@ -476,7 +476,7 @@ def health_check(request):
     return JsonResponse(response_data, status=http_status)
 
 
-def abtest_view(request, endpoint_hash):
+def abtest_view(request):
     """
     A/B test page view.
 
@@ -490,23 +490,44 @@ def abtest_view(request, endpoint_hash):
     if request.method != "GET":
         return HttpResponseNotAllowed(["GET"])
     
+    # Ignore HEAD requests entirely
+    if request.method == "HEAD":
+        return HttpResponseNotAllowed(["GET"])
+    
     experiment_name = "button_label_kudos_vs_thanks"
+    endpoint = "/218b7ae/"
     session_key_variant = f"abexp:{experiment_name}:variant"
-    session_key_exposed = f"abexp:{experiment_name}:exposed"
+    session_key_exposed = f"abexp:{experiment_name}:exposed:{endpoint}"
     
     # Ensure we have a session
     if not request.session.session_key:
         request.session.save()
     session_id = request.session.session_key
     
-    # Very simple bot / health-check filter: require a browser-like UA
+    # Real user filtering: only count genuine top-level navigations
     ua = (request.META.get("HTTP_USER_AGENT") or "").lower()
-    is_browser = (
-        "mozilla" in ua
+    accept = (request.META.get("HTTP_ACCEPT") or "").lower()
+    sec_fetch_mode = request.META.get("HTTP_SEC_FETCH_MODE", "").lower()
+    
+    # Conservative bot filtering: require browser UA, exclude known bots
+    is_browser_ua = (
+        ua
+        and "mozilla" in ua
         and not any(bad in ua for bad in ["bot", "spider", "crawler", "curl", "python", "uptime", "httpclient"])
     )
     
-    # 1) Assign variant once per session
+    # Real navigation check: Sec-Fetch-Mode == "navigate" OR (no Sec-Fetch but Accept contains text/html) OR (no Sec-Fetch and no Accept - fallback for tests/older browsers)
+    is_real_navigation = (
+        request.method == "GET"
+        and is_browser_ua
+        and (
+            sec_fetch_mode == "navigate"
+            or (not sec_fetch_mode and "text/html" in accept)
+            or (not sec_fetch_mode and not accept)  # Fallback for tests/older browsers
+        )
+    )
+    
+    # 1) Assign variant once per session (50/50 split)
     variant = request.session.get(session_key_variant)
     if not variant:
         variant = random.choice(["kudos", "thanks"])
@@ -514,11 +535,11 @@ def abtest_view(request, endpoint_hash):
         request.session.modified = True
     
     # 2) Log ONE exposure on first real browser page load
-    if is_browser and not request.session.get(session_key_exposed):
+    if is_real_navigation and not request.session.get(session_key_exposed):
         ABTestEvent.objects.get_or_create(
             experiment_name=experiment_name,
             event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
-            endpoint=f"/{endpoint_hash}/",
+            endpoint=endpoint,
             session_id=session_id,
             defaults={"variant": variant},
         )
@@ -539,7 +560,7 @@ def abtest_view(request, endpoint_hash):
         {
             "variant": variant,
             "experiment_name": experiment_name,
-            "endpoint_hash": endpoint_hash,
+            "endpoint_hash": "218b7ae",
             "team_members": team_members,
         },
     )
@@ -547,39 +568,61 @@ def abtest_view(request, endpoint_hash):
 
 @csrf_exempt
 @require_POST
-def abtest_click(request, endpoint_hash):
+def abtest_click(request):
     """
     A/B test click handler.
 
     Behavior:
     - POST only.
     - Logs Conversion on every click.
-    - Does NOT log Exposure here.
-    - Uses session-stored variant; if missing, assigns one but does not log exposure.
+    - Backfills exposure if missing (only once).
+    - Variant comes from session only (NOT from POST body).
     """
     from .models import ABTestEvent
     
     experiment_name = "button_label_kudos_vs_thanks"
+    endpoint = "/218b7ae/"
     session_key_variant = f"abexp:{experiment_name}:variant"
+    session_key_exposed = f"abexp:{experiment_name}:exposed:{endpoint}"
     
     # Ensure we have a session
     if not request.session.session_key:
         request.session.save()
     session_id = request.session.session_key
     
-    # Variant should already be assigned by abtest_view;
-    # if not (edge case), assign it, but do NOT log exposure here.
+    # Variant from session only (NOT from POST body)
     variant = request.session.get(session_key_variant)
     if not variant:
         variant = random.choice(["kudos", "thanks"])
         request.session[session_key_variant] = variant
         request.session.modified = True
     
-    # Log Conversion ONLY
+    # Backfill exposure if missing (check both session flag and DB)
+    if not request.session.get(session_key_exposed):
+        # Check DB to ensure we don't create duplicate
+        existing_exposure = ABTestEvent.objects.filter(
+            experiment_name=experiment_name,
+            event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
+            endpoint=endpoint,
+            session_id=session_id,
+        ).exists()
+        
+        if not existing_exposure:
+            ABTestEvent.objects.get_or_create(
+                experiment_name=experiment_name,
+                event_type=ABTestEvent.EVENT_TYPE_EXPOSURE,
+                endpoint=endpoint,
+                session_id=session_id,
+                defaults={"variant": variant},
+            )
+        request.session[session_key_exposed] = True
+        request.session.modified = True
+    
+    # Log Conversion (every click)
     ABTestEvent.objects.create(
         experiment_name=experiment_name,
         event_type=ABTestEvent.EVENT_TYPE_CONVERSION,
-        endpoint=f"/{endpoint_hash}/",
+        endpoint=endpoint,
         session_id=session_id,
         variant=variant,
     )

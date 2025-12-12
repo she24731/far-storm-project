@@ -280,8 +280,8 @@ class ABTestSessionAssignmentTest(TestCase):
         with patch('core.views.random.choice', return_value='kudos'):
             response = self.client.get(self.abtest_url, **headers)
             content = response.content.decode()
-            # Find the AB test button specifically (id="abtest-btn")
-            button_match_start = content.find('id="abtest-btn"')
+            # Find the AB test button specifically (id="abtest")
+            button_match_start = content.find('id="abtest"')
             self.assertNotEqual(button_match_start, -1, "AB test button should exist")
             if button_match_start != -1:
                 # Find the opening button tag
@@ -299,7 +299,7 @@ class ABTestSessionAssignmentTest(TestCase):
         with patch('core.views.random.choice', return_value='thanks'):
             response2 = client2.get(self.abtest_url, **headers)
             content2 = response2.content.decode()
-            button_match_start2 = content2.find('id="abtest-btn"')
+            button_match_start2 = content2.find('id="abtest"')
             self.assertNotEqual(button_match_start2, -1, "AB test button should exist")
             if button_match_start2 != -1:
                 button_tag_start2 = content2.rfind('<button', 0, button_match_start2)

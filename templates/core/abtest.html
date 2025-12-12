@@ -18,7 +18,7 @@
     </ul>
     
     <div class="mt-4">
-      <button id="abtest-btn" class="btn btn-primary">{{ variant }}</button>
+      <button id="abtest" class="btn btn-primary">{{ variant }}</button>
     </div>
   </div>
   
@@ -46,7 +46,7 @@
       }
       
       // Attach click handler to the button
-      document.getElementById("abtest-btn").addEventListener("click", function() {
+      document.getElementById("abtest").addEventListener("click", function() {
         // Google Analytics event (client-side only)
         if (typeof gtag === "function") {
           gtag("event", "ab_button_click", {

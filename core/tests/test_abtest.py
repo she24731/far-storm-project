@@ -382,16 +382,16 @@ class ABTestPublicAccessTest(TestCase):
         response = self.client.get(self.abtest_url)
         
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'id="abtest-btn"')
+        self.assertContains(response, 'id="abtest"')
         
         # Check that button text is either 'kudos' or 'thanks'
         content = response.content.decode('utf-8')
         
         # Find the button and extract its text
         import re
-        button_match = re.search(r'<button[^>]*id="abtest-btn"[^>]*>([^<]+)</button>', content)
+        button_match = re.search(r'<button[^>]*id="abtest"[^>]*>([^<]+)</button>', content)
         
-        self.assertIsNotNone(button_match, "Button with id='abtest-btn' not found")
+        self.assertIsNotNone(button_match, "Button with id='abtest' not found")
         
         button_text = button_match.group(1).strip()
         self.assertIn(button_text, ['kudos', 'thanks'], 
