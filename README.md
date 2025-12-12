@@ -1,92 +1,79 @@
 # Yale Newcomer Survival Guide
 
-A community-driven web application developed as part of MGT656 - Management of Software Development, designed to help Yale newcomers navigate life in New Haven through curated content and community knowledge sharing.
+A community-driven web application helping Yale newcomers navigate life in New Haven. Contributors share knowledge through categorized posts about housing, food, transportation, academics, and more, while administrators moderate content to ensure quality.
 
 **Team:** far-storm  
-**Members:** stormy-deer (Chun-Hung Yeh), adorable-crow (Celine Li), super-giraffe (Denise Wu)
+**Course:** MGT656 - Management of Software Development  
+**Team Members:** stormy-deer (Chun-Hung Yeh), adorable-crow (Celine Li), super-giraffe (Denise Wu)
 
 ---
 
-## Problem Statement
+## 1. Problem Statement
 
 New students and staff arriving at Yale face numerous challenges when transitioning to life in New Haven: finding suitable housing, discovering local restaurants and dining options, understanding public transportation systems, navigating academic resources, and identifying essential services. Existing information sources are scattered across multiple platforms (Facebook groups, university websites, word-of-mouth), making it difficult for newcomers to find reliable, up-to-date, and contextually relevant information in one place.
 
-## MVP Scope
+This application addresses this problem by providing a centralized, community-driven platform where experienced Yale community members can share knowledge through categorized posts, while newcomers can easily discover essential information. The platform implements a contributor-admin moderation workflow to ensure content quality while maintaining community engagement.
 
-This minimum viable product (MVP) delivers a functional web application that enables:
-
-1. **Community Content Creation:** Contributors can create and submit categorized posts about life in New Haven
-2. **Content Moderation:** Admin users can review and approve submitted content to ensure quality
-3. **Public Content Discovery:** Users can browse approved posts organized by categories
-4. **User Authentication:** Secure registration and login with role-based access control
-5. **A/B Testing Infrastructure:** Analytics endpoint for experimentation and data-driven decision making
-
-The MVP focuses on core functionality required for community knowledge sharing while maintaining content quality through moderation workflows.
+**Target Users:**
+- **Newcomers:** Students, staff, and faculty new to Yale who need practical, actionable information
+- **Contributors:** Existing community members who want to share knowledge and recommendations
+- **Admins:** Content moderators responsible for reviewing and approving posts to maintain quality standards
 
 ---
 
-## Core Features
+## 2. MVP Scope
 
-### 1. User Authentication & Role Management
+### Included Functionality
 
-Django's built-in authentication system extended with role-based access control using user groups. Three roles are supported:
+The MVP delivers a functional web application with the following scope:
 
-- **Reader:** Default role assigned to new users upon registration; can browse approved content
-- **Contributor:** Can create, edit, and manage posts through a submission interface
-- **Admin:** Staff users who can moderate posts through an admin dashboard
+- **User Authentication:** Registration and login with role-based access control (Reader, Contributor, Admin)
+- **Content Creation:** Contributors can create and submit posts with categories, titles, and content
+- **Content Moderation:** Three-stage workflow (draft → pending → approved/rejected) with admin review
+- **Content Discovery:** Public browsing of approved posts organized by categories with search functionality
+- **User Management:** Contributor dashboard for managing own posts, admin dashboard for moderation
+- **A/B Testing Infrastructure:** Analytics endpoint for experimentation with button label variants
 
-Authentication uses Django's session-based authentication. New users are automatically assigned to the Reader group upon registration. Role-based permissions control access to contributor submission pages and admin moderation dashboards.
+### Excluded Functionality
 
-### 2. Content Management & Post Workflow
+The following features are intentionally excluded from the MVP scope:
 
-A three-stage moderation workflow ensures content quality:
-
-- **Draft:** Contributors create and refine posts before submission
-- **Pending Review:** Submitted posts await admin approval
-- **Approved/Rejected:** Admin decisions determine post visibility
-
-Contributors can create posts with titles, content, and category assignments. Posts support auto-generated unique slugs from titles. Approved posts automatically receive `published_at` timestamps and become publicly visible. The system includes draft functionality for iterative refinement before submission.
-
-### 3. Category-Based Organization
-
-Posts are organized into categories (Housing, Food, Transport, Academics, etc.) for intuitive navigation. Each category has:
-
-- Dedicated listing pages with pagination support
-- Category detail pages showing all posts in that category
-- Search functionality to find posts across categories
-
-Category organization reduces information overload and improves discoverability for newcomers seeking specific types of information.
-
-### 4. Admin Moderation Dashboard
-
-Admin users access a dedicated dashboard for reviewing pending posts. The moderation workflow includes:
-
-- Queue view of all pending posts awaiting review
-- Approve/reject actions with automatic status updates
-- Automatic publication of approved posts with timestamp recording
-- Contributor feedback on submission status
-
-### 5. A/B Testing & Analytics Infrastructure
-
-A publicly accessible A/B test endpoint at `/218b7ae/` (derived from first 7 characters of SHA1("far-storm")) enables experimentation with button label variants. The endpoint implements:
-
-- Variant assignment (50/50 split between "kudos" and "thanks") persisted via session cookies
-- Server-side event tracking via `ABTestEvent` database model
-- Client-side Google Analytics 4 (GA4) integration for real-time monitoring
-- Session-based deduplication to prevent double-counting exposures
-- Bot traffic filtering to ensure data quality
-
-The infrastructure supports data-driven decision making through conversion rate analysis.
+- Advanced search with filters or faceted search
+- User profiles or user-generated content beyond posts
+- Commenting or discussion threads on posts
+- Email notifications or subscription features
+- Mobile application (web-only, responsive design)
+- Payment or marketplace functionality
+- Real-time chat or messaging
 
 ---
 
-## Technology Stack
+## 3. Core Features
+
+### Feature 1: User Authentication & Role Management
+Django's built-in authentication system extended with role-based access control using user groups. New users automatically receive the "Reader" role upon registration. Three roles are supported: Reader (browse approved content), Contributor (create and manage posts), and Admin (moderate content). Session-based authentication with secure password handling.
+
+### Feature 2: Content Creation & Moderation Workflow
+Contributors can create posts with titles, content, and category assignments. Posts follow a three-stage workflow: Draft (editable by author) → Pending Review (awaiting admin approval) → Approved/Rejected (published or declined). Auto-generated unique slugs from titles. Approved posts automatically receive `published_at` timestamps and become publicly visible.
+
+### Feature 3: Category-Based Organization & Discovery
+Posts are organized into categories (Housing, Food, Transport, Academics, etc.) for intuitive navigation. Category listing pages with pagination. Public search functionality across post titles and content. Only approved posts are visible to non-authenticated users.
+
+### Feature 4: Contributor & Admin Dashboards
+Contributors have access to a personal dashboard (`/my-posts/`) showing all their posts with status indicators. Contributors can edit draft/rejected posts and delete their own posts. Admins have a moderation dashboard (`/dashboard/`) displaying all pending posts with approve/reject actions.
+
+### Feature 5: A/B Testing & Analytics Infrastructure
+Publicly accessible A/B test endpoint at `/218b7ae/` (derived from first 7 characters of SHA1("far-storm")). Tests button label variants ("kudos" vs "thanks") with 50/50 random split persisted via session cookies. Server-side event tracking via `ABTestEvent` model records exposures and conversions. Google Analytics 4 integration provides real-time monitoring.
+
+---
+
+## 4. Tech Stack
 
 ### Backend
 - **Framework:** Django 4.2.26
-- **Database:** PostgreSQL (production) / SQLite (local development)
-- **Authentication:** Django's built-in session-based authentication with user groups
-- **ORM:** Django ORM for database operations
+- **Database:** PostgreSQL (production via Render) / SQLite (local development)
+- **Database Management:** Django ORM with migrations
+- **Authentication:** Django's built-in session-based authentication
 
 ### Frontend
 - **UI Framework:** Bootstrap 5 for responsive design
@@ -94,125 +81,99 @@ The infrastructure supports data-driven decision making through conversion rate 
 - **JavaScript:** Minimal client-side scripting for A/B test interactions and GA4 event tracking
 
 ### Infrastructure & Deployment
-- **Hosting:** Render (staging and production environments)
-- **Static Files:** WhiteNoise middleware for efficient static file serving
-- **Process Management:** Gunicorn WSGI server
-- **Configuration:** Infrastructure-as-code via `render.yaml`
+- **Hosting Platform:** Render (staging and production environments)
+- **Static Files:** WhiteNoise middleware for production static file serving
+- **Process Manager:** Gunicorn WSGI server
+- **Configuration Management:** Environment variables with `python-decouple` for local .env support
 
 ### Analytics & Monitoring
-- **Client-Side:** Google Analytics 4 (GA4) with measurement ID `G-9XJWT2P5LE`
-- **Server-Side:** Django `ABTestEvent` model for reliable event tracking
+- **Client-Side Analytics:** Google Analytics 4 (GA4) with measurement ID `G-9XJWT2P5LE`
+- **Server-Side Tracking:** Django `ABTestEvent` model for reliable event storage
+- **Logging:** Django logging configured to write to stdout (12-factor compliant)
 
 ### Development Tools
 - **Version Control:** Git with GitHub
-- **Linting:** Ruff (configured in `pyproject.toml`)
-- **Testing:** Django Test Framework with 111+ test cases
+- **Linting:** Ruff 0.7.0 (configured in `pyproject.toml`)
+- **Testing:** Django Test Framework
+- **Continuous Integration:** GitHub Actions
 
 ---
 
-## Authentication Approach
+## 5. Authentication Approach
 
 The application uses Django's built-in authentication system with the following implementation:
 
 **User Registration:**
-- Custom registration form extends Django's `UserCreationForm`
+- Custom `UserRegistrationForm` extends Django's `UserCreationForm`
 - New users are automatically assigned to the "Reader" group upon registration
 - Users are automatically logged in after successful registration
+- Registration accessible at `/signup/`
 
 **Login/Logout:**
 - Custom login view extends Django's `LoginView` with role-based redirects
-- Session-based authentication stores user session data
+- Login accessible at `/login/`
 - Logout uses Django's `LogoutView` with success messages
+- Session-based authentication stores user session data in database
 
 **Role-Based Access Control:**
-- Three user groups: "Readers", "Contributors", "Admins"
+- Three user groups: "Reader", "Contributor", "Admin"
 - Permissions enforced via decorators: `@login_required` and `@user_passes_test`
-- Contributor submission pages require `is_contributor()` check
-- Admin dashboard requires `is_staff` flag or `is_admin()` check
+- Contributor submission pages (`/submit/`) require `is_contributor()` check
+- Admin dashboard (`/dashboard/`) requires `is_staff` flag or `is_admin()` check
 - Public content (approved posts) accessible without authentication
 
 **Session Management:**
 - Django sessions stored in database (configured via `SESSION_ENGINE`)
 - Session cookies used for authentication persistence
-- Session data used for A/B test variant assignment and deduplication
+- Session data also used for A/B test variant assignment and deduplication
 
 ---
 
-## Database Models Overview
+## 6. Database Models Overview
 
-The application uses the following primary models:
+The application uses the following Django models:
 
 ### Category
-- **Purpose:** Organize posts by topic (Housing, Food, Transport, Academics, etc.)
-- **Key Fields:** `name` (unique), `slug` (unique, indexed), `description`, `created_at`
-- **Relationships:** One-to-many with Post model
+Organizes posts by topic (Housing, Food, Transport, Academics, etc.). Fields: `name` (unique), `slug` (unique, indexed), `description`, `created_at`. One-to-many relationship with Post model.
 
 ### Post
-- **Purpose:** Store user-generated content with moderation workflow
-- **Key Fields:** 
-  - Content: `title`, `slug` (unique, auto-generated), `content`, `category` (ForeignKey)
-  - Metadata: `author` (ForeignKey to User), `status` (draft/pending/approved/rejected)
-  - Timestamps: `created_at`, `updated_at`, `published_at` (auto-set on approval)
-- **Indexes:** `status`, `category_id`, `updated_at` for query performance
-- **Workflow:** Status transitions from draft → pending → approved/rejected
+Stores user-generated content with moderation workflow. Fields: `title`, `slug` (unique, auto-generated), `content`, `category` (ForeignKey), `author` (ForeignKey to User), `status` (draft/pending/approved/rejected), `updated_at`, `published_at` (auto-set on approval). Indexes on `status`, `category_id`, and `updated_at` for query performance.
 
 ### Bookmark
-- **Purpose:** Allow users to save posts for later reference
-- **Key Fields:** `user` (ForeignKey), `post` (ForeignKey), `created_at`
-- **Constraints:** Unique together on `(user, post)` to prevent duplicates
+Allows authenticated users to save posts for later reference. Fields: `user` (ForeignKey), `post` (ForeignKey), `created_at`. Unique constraint on `(user, post)` prevents duplicates.
 
 ### ExternalLink
-- **Purpose:** Store curated external resources related to categories
-- **Key Fields:** `title`, `url`, `category` (ForeignKey, optional), `created_at`, `updated_at`
+Stores curated external resources related to categories. Fields: `title`, `url`, `category` (ForeignKey, optional), `created_at`, `updated_at`.
 
 ### ABTestEvent
-- **Purpose:** Server-side tracking of A/B test exposures and conversions
-- **Key Fields:**
-  - Experiment: `experiment_name`, `variant`, `event_type` (exposure/conversion)
-  - Metadata: `endpoint`, `session_id`, `ip_address`, `user_agent`
-  - User: `user` (ForeignKey, optional for anonymous users), `created_at`
-- **Indexes:** Composite indexes on `(experiment_name, variant, event_type)` and `(experiment_name, created_at)` for efficient querying
+Server-side tracking of A/B test exposures and conversions. Fields: `experiment_name`, `variant`, `event_type` (exposure/conversion), `endpoint`, `session_id`, `ip_address`, `user_agent`, `user` (ForeignKey, optional), `created_at`. Composite indexes on `(experiment_name, variant, event_type)` and `(experiment_name, created_at)` for efficient querying. Used for analytics analysis via management command `abtest_report`.
 
 All models use Django migrations for schema management, ensuring version-controlled and reproducible database changes across environments.
 
 ---
 
-## Deployment Environments
+## 7. Deployment URLs
 
 ### Staging Environment
-- **Purpose:** Testing changes before production deployment
-- **URL:** [TBD: staging URL on Render]
-- **Configuration:** Same codebase as production, separate database instance
-- **Usage:** QA testing, integration verification, safe experimentation with new features
+**URL:** https://yale-newcomer-survival-guide-staging.onrender.com/
+
+Staging environment used for testing changes before production deployment. Same codebase as production with separate PostgreSQL database instance. Used for QA testing, integration verification, and safe experimentation with new features.
 
 ### Production Environment
-- **Purpose:** Live application serving end users
-- **URL:** [TBD: production URL on Render]
-- **Configuration:** Stable, tested code only, production PostgreSQL database
-- **Monitoring:** Application logs via Render's logging infrastructure, error tracking
+**URL:** https://yale-newcomer-survival-guide.onrender.com/
+
+Production environment serving live users. Stable, tested code only. Production PostgreSQL database. Monitored for performance and errors via Render's logging infrastructure.
 
 Environment separation enables safe testing of database migrations, configuration changes, and new features without impacting production users.
 
-### Render Deployment
+### A/B Test Endpoint
+**URL:** https://yale-newcomer-survival-guide.onrender.com/218b7ae/
 
-**Build Command:**
-```bash
-pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
-```
-
-**Start Command:**
-```bash
-gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
-```
-
-Configuration managed via `render.yaml` for infrastructure-as-code deployment. Render automatically provides:
-- PostgreSQL database with `DATABASE_URL` environment variable
-- `RENDER_EXTERNAL_HOSTNAME` for service URL
-- Port binding via `$PORT` environment variable
+Publicly accessible A/B test endpoint. No authentication required. Displays team information and button with variants for experimentation.
 
 ---
 
-## CI/CD Pipeline
+## 8. CI/CD Pipeline
 
 ### Continuous Integration (GitHub Actions)
 
@@ -236,61 +197,80 @@ Automated CI pipeline implemented via `.github/workflows/ci.yml` that runs on:
 ### Continuous Deployment (Render)
 
 Render automatically deploys from GitHub on commits to `main` branch:
-- Build process installs dependencies and runs database migrations
-- Start command launches Gunicorn WSGI server
-- Health checks ensure service availability
+
+**Build Process:**
+- Installs dependencies from `requirements.txt`
+- Runs `python manage.py collectstatic --noinput` to prepare static files for WhiteNoise
+- Runs `python manage.py migrate` to apply database migrations
+
+**Start Process:**
+- Launches Gunicorn WSGI server: `gunicorn config.wsgi:application --bind 0.0.0.0:$PORT`
+- Binds to port provided by Render via `$PORT` environment variable
+- Health checks configured to ensure service availability
+
+**Configuration:**
 - Environment variables configured via Render dashboard
+- PostgreSQL database automatically provides `DATABASE_URL`
+- `RENDER_EXTERNAL_HOSTNAME` automatically set by Render
 
 This CI/CD approach maintains code quality and enables rapid, reliable deployments.
 
 ---
 
-## 12-Factor App Compliance
+## 9. 12-Factor App Compliance Summary
 
 The application explicitly follows all 12-factor app methodology principles:
 
-1. **Codebase:** Single Git repository deployed to multiple environments without divergence
-2. **Dependencies:** Explicitly declared in `requirements.txt` with pinned versions
-3. **Config:** All configuration via environment variables (no hardcoded secrets)
-4. **Backing Services:** Database treated as attached resource via `DATABASE_URL`
-5. **Build/Release/Run:** Strict separation via Render's build and start commands
-6. **Processes:** Stateless application processes with no shared filesystem state
-7. **Port Binding:** Application binds to port provided by `$PORT` environment variable
-8. **Concurrency:** Stateless process model supports horizontal scaling
-9. **Disposability:** Fast startup and graceful shutdown
-10. **Dev/Prod Parity:** Same codebase, different configuration via environment variables
-11. **Logs:** All logging configured to write to stdout (captured by Render)
-12. **Admin Processes:** Management commands run as one-off processes
+**I. Codebase:** Single Git repository deployed to multiple environments (local, staging, production) without divergence.
 
-**Implementation:**
-- `config/settings.py` loads all configuration from environment variables
-- `.gitignore` excludes `.env` files
-- No secrets committed to repository
-- Logging configuration uses `StreamHandler` for stdout output
-- Environment variables: `DJANGO_SECRET_KEY`, `DATABASE_URL`, `DEBUG`, `DJANGO_ALLOWED_HOSTS`, `GA_MEASUREMENT_ID`
+**II. Dependencies:** Explicitly declared in `requirements.txt` with pinned versions (e.g., `Django==4.2.26`, `ruff==0.7.0`). No system-level dependencies assumed.
 
-This approach ensures portability, scalability, and maintainability across deployment environments.
+**III. Config:** All configuration stored in environment variables (`SECRET_KEY`, `DATABASE_URL`, `DEBUG`, `ALLOWED_HOSTS`, `GA_MEASUREMENT_ID`). No hardcoded secrets or environment-specific values in code. Local development uses `python-decouple` for `.env` file support, but production requires explicit environment variables.
+
+**IV. Backing Services:** Database (PostgreSQL/SQLite) treated as attached resource via `DATABASE_URL` environment variable, using `dj-database-url` for connection management. Database connection treated as interchangeable resource.
+
+**V. Build, Release, Run:** Strict separation via Render's build and start commands. Build installs dependencies and runs migrations. Release is managed by Render. Run executes via Gunicorn start command.
+
+**VI. Processes:** Stateless application processes with no shared memory or filesystem state. Session data stored in database, static files served via WhiteNoise.
+
+**VII. Port Binding:** Application binds to port provided by `$PORT` environment variable (Render automatically sets this). No hardcoded ports.
+
+**VIII. Concurrency:** Stateless process model supports horizontal scaling. Multiple Gunicorn workers can run simultaneously.
+
+**IX. Disposability:** Fast startup (Django initialization completes quickly), graceful shutdown (Gunicorn handles SIGTERM), minimal startup overhead.
+
+**X. Dev/Prod Parity:** Same codebase across all environments. Differences handled via environment variables (DEBUG, DATABASE_URL). Same Python version, same dependencies.
+
+**XI. Logs:** All logging configured to write to stdout via Django `LOGGING` configuration with `StreamHandler`. Render captures stdout as log streams. Logging level configurable via `DJANGO_LOG_LEVEL` environment variable.
+
+**XII. Admin Processes:** Management commands (`python manage.py migrate`, `python manage.py abtest_report`) run as one-off processes, not as long-running services.
+
+**Verification:** `config/settings.py` explicitly loads all configuration from environment variables. `.gitignore` excludes `.env` files. No secrets are committed to the repository. Logging configuration writes to `StreamHandler` (stdout).
 
 ---
 
-## Testing Strategy
+## 10. Testing Strategy
 
 ### Test Coverage
 
 The codebase includes comprehensive automated tests using Django's test framework:
 
-- **Total Tests:** 111+ tests across multiple test files
+**Test Suite:**
+- **Total Test Files:** 12 test files in `core/tests/`
 - **Coverage:** >75% overall, 100% on critical models
-- **Test Files:**
-  - `test_abtest.py`: A/B test endpoint and variant assignment
-  - `test_abtest_session_dedupe.py`: Session-based deduplication logic
-  - `test_abtest_report_command.py`: Management command functionality
-  - `test_url_routing.py`: URL resolution and routing correctness
-  - `test_post_model.py`: Post model functionality and workflow
-  - `test_category_model.py`: Category model functionality
-  - `test_bookmark_model.py`: Bookmark functionality
-  - `test_integration.py`: End-to-end user workflows
-  - Additional tests for forms, admin, and views
+- **Test Types:** Unit tests, integration tests, view tests, model tests
+
+**Test Files:**
+- `test_abtest.py`: A/B test endpoint and variant assignment
+- `test_abtest_session_dedupe.py`: Session-based deduplication logic
+- `test_abtest_report_command.py`: Management command functionality
+- `test_url_routing.py`: URL resolution and routing correctness
+- `test_post_model.py`: Post model functionality and workflow
+- `test_category_model.py`: Category model functionality
+- `test_bookmark_model.py`: Bookmark functionality
+- `test_external_link.py`: ExternalLink model
+- `test_integration.py`: End-to-end user workflows
+- Additional tests for forms, admin, and views
 
 ### Test Execution
 
@@ -304,116 +284,190 @@ python manage.py test
 - SQLite database for fast, reliable test execution
 - All tests must pass before code can be merged
 
-### Linting
+**Test Categories:**
+- **Unit Tests:** Individual model methods, form validation, helper functions
+- **Integration Tests:** Complete user workflows (registration → post creation → moderation → publication)
+- **View Tests:** HTTP request/response handling, authentication, authorization
+- **Model Tests:** Database operations, relationships, constraints
 
-Ruff is used for code linting, configured in `pyproject.toml`:
-- Rules: E (errors), F (pyflakes)
-- Catches unused imports, undefined names, and code quality issues
-- Auto-fixable issues addressed via `ruff check . --fix`
-- All files pass linting checks
+**Limitations:**
+- No browser-based end-to-end tests (Selenium/Playwright)
+- Limited performance testing (query optimization tested manually)
+- No load testing for production capacity planning
 
 ---
 
-## A/B Test Endpoint & Analytics
+## 11. Analytics Endpoint
 
-### Endpoint Specification
+### A/B Test Endpoint
 
-The A/B test endpoint is located at `/218b7ae/`, derived from the first 7 characters of SHA1("far-storm"):
+**URL:** `/218b7ae/` (publicly accessible, no authentication required)
 
-```python
-import hashlib
-hashlib.sha1("far-storm".encode()).hexdigest()[:7]  # Returns: "218b7ae"
-```
+The A/B test endpoint serves as both an analytics endpoint and experimentation platform:
 
-**Endpoint URL:** [TBD: production URL]/218b7ae/
+**Endpoint Features:**
+- Displays team nickname "far-storm" and all team members
+- Shows button with `id="abtest"` displaying either "kudos" or "thanks" variant
+- 50/50 random variant assignment persisted via Django session cookie
+- Variant consistency maintained across page reloads within same session
 
-### A/B Test Logic
+**Analytics Tracking:**
 
-**Variant Assignment:**
-- 50/50 random split between "kudos" and "thanks" variants
+**Server-Side (Primary Source of Truth):**
+- `ABTestEvent` model records all events in PostgreSQL database
+- Exposure events: Logged once per session on first page load (deduplicated)
+- Conversion events: Logged on each button click
+- Session-based deduplication prevents double-counting exposures
+- Bot filtering excludes non-human traffic (User-Agent, headers, request method)
+- Database indexes optimize query performance for analytics analysis
+
+**Client-Side (Real-Time Monitoring):**
+- Google Analytics 4 (GA4) events provide real-time visibility
+- `ab_exposure` event fired once per session on first exposure
+- `ab_button_click` event fired on each button click
+- GA4 measurement ID: `G-9XJWT2P5LE`
+- Context processor injects GA4 configuration into all templates
+
+**Analytics Analysis:**
+- Management command `python manage.py abtest_report` analyzes `ABTestEvent` data
+- Calculates exposures, conversions, and conversion rates per variant
+- Identifies winning variant based on higher conversion rate
+- Provides statistical warnings for insufficient sample sizes
+
+**Click Endpoint:**
+- **URL:** `/218b7ae/click/` (POST-only endpoint)
+- Handles button click events
+- Logs conversion events server-side
+- Returns JSON response with variant information
+- Backfills exposure if missing (ensures exposure before conversion)
+
+---
+
+## 12. A/B Testing Logic
+
+### Experiment Design
+
+**Experiment Name:** `button_label_kudos_vs_thanks`
+
+**Endpoint:** `/218b7ae/` (derived from first 7 characters of SHA1("far-storm"))
+
+**Variants:** Two button label variants tested:
+- **"kudos"**: Button displays text "kudos"
+- **"thanks"**: Button displays text "thanks"
+
+**Split Ratio:** 50/50 random assignment
+
+**Assignment Logic:**
+- Variant assigned once per session using random selection
 - Assignment persisted via Django session cookie (`abexp:button_label_kudos_vs_thanks:variant`)
-- Consistent variant per session (users see same variant across page reloads)
+- Same variant shown to user across all page reloads within same session
+- Variant consistency ensures valid A/B test comparison
 
-**Event Tracking:**
+### Event Tracking Logic
 
-1. **Exposure Events:**
-   - Logged when user first visits `/218b7ae/` in a session
-   - Only counted for real browser navigation (filters bots via User-Agent and headers)
-   - Session-based deduplication prevents double-counting from page reloads
-   - Server-side: `ABTestEvent` record with `event_type="exposure"`
-   - Client-side: GA4 `ab_exposure` event fired once per session
+**Exposure Events:**
+- Logged when user first visits `/218b7ae/` in a session
+- Only logged for real browser navigations (bot filtering applied)
+- Session-based deduplication: Session flag `abexp:button_label_kudos_vs_thanks:exposed:/218b7ae/` prevents duplicate logging
+- Database-level deduplication: Uniqueness constraint on `(experiment_name, event_type="exposure", endpoint, session_id)` ensures atomicity
+- Bot filtering: User-Agent checking, header analysis (`Sec-Fetch-Mode: navigate`), request method validation (GET only)
 
-2. **Conversion Events:**
-   - Logged when user clicks button with `id="abtest"`
-   - Multiple conversions allowed per session (users can click multiple times)
-   - Server-side: `ABTestEvent` record with `event_type="conversion"`
-   - Client-side: GA4 `ab_button_click` event fired on each click
+**Conversion Events:**
+- Logged when user clicks button with `id="abtest"`
+- Multiple conversions allowed per session (users can click multiple times)
+- Variant taken from session only (not from POST body) to prevent manipulation
+- Exposure backfilling: If conversion occurs without prior exposure logged, exposure is backfilled once
 
-**Bot Filtering:**
-- User-Agent filtering (requires "Mozilla", excludes known bot patterns)
-- Request method filtering (only GET requests for exposure)
-- Navigation header detection (`Sec-Fetch-Mode: navigate` or `Accept: text/html`)
-- Fallback logic for older browsers and test environments
+### Deduplication Strategy
 
-**Deduplication Strategy:**
-- Session flag check before logging exposure (`abexp:button_label_kudos_vs_thanks:exposed:/218b7ae/`)
-- Database uniqueness constraint on `(experiment_name, event_type="exposure", endpoint, session_id)`
-- Atomic `get_or_create()` prevents race conditions
+**Session-Level:**
+- Session flags checked before logging exposure
+- Prevents double-counting from page refreshes or browser back/forward navigation
+- Flags stored in Django session (database-backed)
 
-### Analytics Analysis
+**Database-Level:**
+- `ABTestEvent.objects.get_or_create()` with uniqueness constraints ensures atomicity
+- Prevents race conditions in concurrent requests
+- Database indexes optimize uniqueness checks
 
-To compute A/B test results and determine the winning variant:
+### Cache Control
 
-```bash
-python manage.py abtest_report
-```
+**Implementation:**
+- `@never_cache` decorator on both A/B test views
+- Explicit cache headers: `Cache-Control: no-store, no-cache, must-revalidate, max-age=0`
+- `Vary: Cookie` header ensures responses vary by session
+- Prevents browsers and CDNs from caching variant assignments
 
-This management command:
-- Queries `ABTestEvent` records for experiment "button_label_kudos_vs_thanks" and endpoint "/218b7ae/"
-- Calculates exposures and conversions per variant ("kudos" vs "thanks")
-- Computes conversion rates: (conversions / exposures) × 100%
-- Identifies winner based on higher conversion rate
-- Provides warnings if sample size < 30 (insufficient for statistical significance)
+**Rationale:**
+- Ensures each user session receives fresh variant assignment
+- Prevents cached responses from skewing A/B test results
+- Maintains variant consistency within session while preventing cross-session caching
 
-**Dual-Tracking Architecture:**
-- **Server-Side (`ABTestEvent`):** Primary source of truth, bot-filtered, reliable
-- **Client-Side (GA4):** Real-time monitoring, visual dashboards, immediate validation
+### Analysis Methodology
+
+**Data Source:**
+- Primary: Server-side `ABTestEvent` database records (reliable, bot-filtered)
+- Secondary: Google Analytics 4 real-time dashboard (validation, monitoring)
+
+**Metrics:**
+- Exposures: Count of unique sessions seeing each variant
+- Conversions: Count of button clicks per variant
+- Conversion Rate: (Conversions / Exposures) × 100%
+
+**Statistical Considerations:**
+- Sample size requirements: ≥30 exposures per variant for basic analysis, ideally ≥100 for statistical significance
+- Bot traffic filtered to ensure data quality
+- Session-based deduplication ensures accurate exposure counts
+- Management command provides warnings for insufficient sample sizes
 
 ---
 
-## Environment Variables
+## 13. Team Members & Contributions
 
-All configuration follows 12-factor app principles using environment variables. **Never commit secrets to the repository.**
+### Team: far-storm
 
-### Required Variables
+### stormy-deer (Chun-Hung Yeh)
 
-| Variable | Description | Default (Local) | Production |
-|----------|-------------|-----------------|------------|
-| `DJANGO_SECRET_KEY` | Cryptographic signing key | `django-insecure-dev-key-change-in-production` | **Must be set** |
-| `DEBUG` | Enable debug mode | `False` | `False` |
-| `DJANGO_ALLOWED_HOSTS` | Comma-separated allowed hosts | `127.0.0.1,localhost` (if DEBUG) | **Must be set** |
-| `DATABASE_URL` | Database connection string | `sqlite:///db.sqlite3` | PostgreSQL URL from Render |
-| `GA_MEASUREMENT_ID` | Google Analytics 4 measurement ID | `G-9XJWT2P5LE` | Can use default or override |
+**Primary Contributions:**
+- **Backend Architecture:** Django project setup and configuration, application structure
+- **A/B Testing Implementation:** `/218b7ae/` endpoint, `ABTestEvent` model, variant assignment logic, session-based deduplication
+- **Analytics Integration:** Google Analytics 4 context processor, server-side and client-side event tracking
+- **Deployment & Infrastructure:** Render configuration, PostgreSQL setup, environment variable management, build/start commands
+- **DevOps & CI/CD:** GitHub Actions workflow configuration, automated testing and linting
+- **12-Factor Compliance:** Environment variable configuration, logging to stdout, static files configuration
+- **Testing:** Comprehensive test suite development, coverage tooling configuration
+- **Management Commands:** `abtest_report` command for analytics analysis
 
-### Local Development
+### adorable-crow (Celine Li)
 
-Create a `.env` file in the project root (gitignored):
+**Primary Contributions:**
+- **Frontend Development:** Template architecture, Bootstrap 5 integration, responsive UI design
+- **User Authentication:** Registration and login views, user group assignment logic, role-based access control implementation
+- **Contributor Features:** Post submission forms, contributor dashboard (`/my-posts/`), post editing functionality
+- **User Experience:** UI/UX design, form validation, error handling, user feedback messages
+- **Testing & QA:** A/B test endpoint testing, analytics verification, user workflow testing
+- **Code Reviews:** Quality assurance and code review contributions
 
-```bash
-DJANGO_SECRET_KEY=your-secret-key-here
-DEBUG=True
-DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
-DATABASE_URL=sqlite:///db.sqlite3
-GA_MEASUREMENT_ID=G-9XJWT2P5LE
-```
+### super-giraffe (Denise Wu)
 
-### Production (Render)
+**Primary Contributions:**
+- **Database Design:** Category, Post, Bookmark, ExternalLink, and ABTestEvent model design and implementation
+- **Admin Tools:** Admin moderation dashboard (`/dashboard/`), approve/reject workflow implementation
+- **Content Management:** Category organization, post workflow logic, status transition handling
+- **Backend Views:** URL routing, view implementation, access control logic
+- **A/B Testing Planning:** A/B testing infrastructure planning and design
+- **Testing & QA:** Production deployment testing, integration testing, database schema validation
+- **Documentation:** Sprint documentation and process improvement documentation
 
-Set environment variables in Render dashboard:
-- Go to service → Environment
-- Add each variable with production value
-- Render automatically provides `DATABASE_URL` for PostgreSQL
-- `RENDER_EXTERNAL_HOSTNAME` automatically set by Render
+### Shared Responsibilities
+
+Per course policy, all team members share equal responsibility for project outcomes and grading. While individual contributions are listed above, the project represents a collaborative effort with:
+- Code reviews across all features
+- Pair programming on complex functionality
+- Shared decision-making throughout all four sprints
+- Collective responsibility for final submission quality
+
+**GitHub Repository:** [Repository URL]
 
 ---
 
@@ -429,7 +483,7 @@ Set environment variables in Render dashboard:
 
 1. **Clone the repository**
    ```bash
-   git clone [TBD: repository URL]
+   git clone [repository-url]
    cd yale-newcomer-survival-guide
    ```
 
@@ -444,68 +498,36 @@ Set environment variables in Render dashboard:
    pip install -r requirements.txt
    ```
 
-4. **Run migrations**
+4. **Configure environment variables**
+   
+   Create a `.env` file in the project root:
+   ```bash
+   DJANGO_SECRET_KEY=your-secret-key-here
+   DEBUG=True
+   DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
+   DATABASE_URL=sqlite:///db.sqlite3
+   GA_MEASUREMENT_ID=G-9XJWT2P5LE
+   ```
+
+5. **Run migrations**
    ```bash
    python manage.py migrate
    ```
 
-5. **Create superuser (optional)**
+6. **Create superuser (optional)**
    ```bash
    python manage.py createsuperuser
    ```
 
-6. **Run development server**
+7. **Run development server**
    ```bash
    python manage.py runserver
    ```
 
-7. **Access the application**
+8. **Access the application**
    - Application: http://127.0.0.1:8000
    - Admin interface: http://127.0.0.1:8000/admin/
    - A/B test endpoint: http://127.0.0.1:8000/218b7ae/
-
----
-
-## Team Members & Contributions
-
-### stormy-deer (Chun-Hung Yeh)
-
-**Primary Contributions:**
-- Project architecture and Django setup
-- A/B testing implementation (`/218b7ae/` endpoint, `ABTestEvent` model, variant assignment logic)
-- Analytics integration (GA4 context processor, event tracking)
-- Production deployment and infrastructure configuration (Render, PostgreSQL, environment variables)
-- Server-side event tracking and deduplication logic
-- Management commands (`abtest_report`, infrastructure commands)
-- 12-factor app compliance and environment variable management
-- Comprehensive test suite and coverage tooling
-- CI/CD workflow configuration (GitHub Actions)
-
-### adorable-crow (Celine Li)
-
-**Primary Contributions:**
-- User authentication system and role management
-- Contributor dashboard and post management workflows
-- Public-facing UI design and Bootstrap integration
-- Template architecture and frontend development
-- User experience testing and validation
-- A/B test endpoint testing and analytics verification
-- Code reviews and quality assurance
-
-### super-giraffe (Denise Wu)
-
-**Primary Contributions:**
-- Database models and schema design (Category, Post, Bookmark, `ABTestEvent`)
-- Admin moderation tools and workflows
-- Category and post management features
-- URL routing and view implementation
-- A/B testing infrastructure planning and design
-- Production deployment testing and QA
-- Sprint documentation and process improvement
-
-### Shared Responsibility
-
-Per course policy, all team members share equal responsibility for project outcomes and grading. While individual contributions are listed above, the project represents a collaborative effort with code reviews, pair programming, and shared decision-making throughout all four sprints.
 
 ---
 
