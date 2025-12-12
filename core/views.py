@@ -15,6 +15,8 @@ from django.utils import timezone
 from django.http import JsonResponse, HttpResponseNotAllowed, HttpRequest
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from django.views.decorators.cache import never_cache
+from django.views.decorators.vary import vary_on_headers
 import random
 from .models import Category, Post, Bookmark, ExternalLink
 from .forms import PostForm, UserRegistrationForm
@@ -476,6 +478,8 @@ def health_check(request):
     return JsonResponse(response_data, status=http_status)
 
 
+@never_cache
+@vary_on_headers("Cookie")
 def abtest_view(request):
     """
     A/B test page view.
@@ -561,7 +565,7 @@ def abtest_view(request):
     ]
     
     # 3) Render page
-    return render(
+    response = render(
         request,
         "core/abtest.html",
         {
@@ -571,6 +575,14 @@ def abtest_view(request):
             "team_members": team_members,
         },
     )
+    
+    # Extra hardening: ensure no caching (some proxies/CDNs ignore decorators)
+    response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response["Pragma"] = "no-cache"
+    response["Expires"] = "0"
+    response["Vary"] = "Cookie"
+    
+    return response
 
 
 @csrf_exempt
@@ -586,6 +598,8 @@ def abtest_click(request):
     - Variant comes from session only (NOT from POST body).
     
     This view only handles /218b7ae/click/ - any other path should not reach here.
+    
+    Cache-Control headers prevent intermediaries from caching conversion responses.
     """
     from django.http import Http404
     from .models import ABTestEvent
@@ -641,7 +655,15 @@ def abtest_click(request):
         variant=variant,
     )
     
-    return JsonResponse({"status": "ok", "variant": variant})
+    response = JsonResponse({"status": "ok", "variant": variant})
+    
+    # Extra hardening: ensure no caching (some proxies/CDNs ignore decorators)
+    response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response["Pragma"] = "no-cache"
+    response["Expires"] = "0"
+    response["Vary"] = "Cookie"
+    
+    return response
 
 
 
