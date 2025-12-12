@@ -1,281 +1,395 @@
 # Yale Newcomer Survival Guide
 
-A Django 5 web application that helps Yale newcomers find categorized tips and resources for life in New Haven.
+A community-driven web application helping Yale newcomers navigate life in New Haven. Contributors share posts about housing, food, transportation, academics, and more, while admins moderate content to ensure quality.
 
-## Features
+**Team:** far-storm (stormy-deer, adorable-crow, super-giraffe)
 
-- **Role-Based Access Control**: Reader, Contributor, and Admin roles
-- **Category-Based Content**: Browse posts organized by categories
-- **Post Workflow**: Draft → Pending → Approved/Rejected
-- **Admin Dashboard**: Custom dashboard at `/dashboard/` for reviewing pending posts
-- **Contributor Submission**: Contributors can submit posts for review
-- **Search**: Simple keyword search on home page
-- **Bootstrap UI**: Modern, responsive interface
+---
+
+## Project Overview
+
+### Problem Statement
+
+New students and staff arriving at Yale face numerous challenges: finding housing, discovering local restaurants, understanding transportation options, and navigating academic resources. Existing resources are scattered across multiple platforms, making it difficult to find reliable, up-to-date information.
+
+### Solution
+
+The Yale Newcomer Survival Guide provides a centralized, community-driven platform where experienced Yale community members can share knowledge and newcomers can easily discover essential information. The platform uses a contributor-admin workflow to ensure content quality while maintaining community engagement.
+
+### Target Users
+
+- **Newcomers:** Students, staff, and faculty new to Yale who need practical information
+- **Contributors:** Community members who want to share knowledge and help others
+- **Admins:** Content moderators who review and approve posts to maintain quality
+
+---
+
+## Core Features
+
+### 1. User Authentication & Role Management
+- User registration with automatic role assignment (Reader, Contributor, Admin)
+- Secure login/logout functionality
+- Role-based access control throughout the application
+
+### 2. Content Management System
+- **Contributors:** Create, edit, and manage posts with draft → pending → approved workflow
+- **Admins:** Review and moderate posts through admin dashboard
+- **Public:** Browse approved posts by category
+
+### 3. Category-Based Organization
+- Posts organized by categories (Housing, Food, Transport, Academics, etc.)
+- Category listing and detail pages
+- Easy navigation and discovery
+
+### 4. Post Workflow & Moderation
+- Draft posts for contributors to refine before submission
+- Pending review queue for admins
+- Approve/reject workflow with automatic publication
+- Auto-generated unique slugs from post titles
+
+### 5. A/B Testing & Analytics
+- A/B test endpoint at `/218b7ae/` for button label experiment
+- Server-side event tracking via `ABTestEvent` model
+- Google Analytics 4 integration for real-time monitoring
+- Management command to analyze results and determine winner
+
+---
 
 ## Tech Stack
 
-- **Backend**: Django 4.2 (Python 3.9+)
-- **Database**: PostgreSQL (production via Render), SQLite (local development)
-- **Frontend**: Django Templates + Bootstrap 5
-- **Static Files**: WhiteNoise
-- **Production Server**: Gunicorn
-- **Deployment**: Render
+- **Backend Framework:** Django 4.2.26
+- **Database:** PostgreSQL (production) / SQLite (local development)
+- **Frontend:** Bootstrap 5 for responsive UI
+- **Static Files:** WhiteNoise for production serving
+- **Deployment:** Render (staging + production environments)
+- **Analytics:** Google Analytics 4 (GA4)
+- **Version Control:** GitHub
+- **Linting:** Ruff
+- **Testing:** Django Test Framework
 
-## Local Development Setup
+---
+
+## Local Setup
 
 ### Prerequisites
 
-- Python 3.11+ (Django 5 requires Python 3.10+)
+- Python 3.9+
 - pip
+- virtualenv (or venv)
 
-### Step-by-Step Setup
+### Installation Steps
 
-1. **Create and activate virtual environment**:
+1. **Clone the repository**
+   ```bash
+   git clone [TBD: repository URL]
+   cd yale-newcomer-survival-guide
+   ```
+
+2. **Create virtual environment**
    ```bash
    python3 -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
-2. **Install dependencies**:
+3. **Install dependencies**
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Run migrations**:
+4. **Run migrations**
    ```bash
    python manage.py migrate
    ```
 
-4. **Set up user groups**:
+5. **Create user groups (optional)**
    ```bash
    python manage.py setup_groups
    ```
 
-5. **Seed initial data** (creates categories, sample users, and posts):
+6. **Seed initial data (optional)**
    ```bash
    python manage.py seed_data
    ```
 
-6. **Create superuser** (for admin access):
+7. **Create superuser**
    ```bash
    python manage.py createsuperuser
    ```
-   Follow the prompts. Example: username `admin`, password `admin19891217`
 
-7. **Run development server**:
+8. **Run development server**
    ```bash
    python manage.py runserver
    ```
 
-8. **Access the application**:
-   - Homepage: http://localhost:8000/
-   - Admin panel: http://localhost:8000/admin/
-   - Dashboard: http://localhost:8000/dashboard/ (admin only)
-   - Submit post: http://localhost:8000/submit/ (contributors only)
+9. **Access the application**
+   - Open http://127.0.0.1:8000 in your browser
+   - Admin interface: http://127.0.0.1:8000/admin/
 
-### Sample Users
+---
 
-After running `seed_data`, you can log in with:
+## Environment Variables
 
-- **Admin**: username: `admin`, password: `admin123`
-- **Contributor**: username: `contributor`, password: `contributor123`
+**Important:** Never commit secrets to the repository. All sensitive configuration is loaded from environment variables.
 
-## Git & GitHub Setup
+### Required Environment Variables
 
-### Push to GitHub
+| Variable | Description | Default (Local) | Production |
+|----------|-------------|-----------------|------------|
+| `DJANGO_SECRET_KEY` | Django secret key for cryptographic signing | `django-insecure-dev-key-change-in-production` | **Must be set** |
+| `DEBUG` | Enable debug mode | `False` | `False` |
+| `DJANGO_ALLOWED_HOSTS` | Comma-separated list of allowed hosts | `127.0.0.1,localhost` | **Must be set** |
+| `DATABASE_URL` | Database connection URL | `sqlite:///db.sqlite3` | PostgreSQL URL from Render |
+| `GA_MEASUREMENT_ID` | Google Analytics 4 measurement ID | `G-9XJWT2P5LE` | Can use default or override |
 
-1. **Create a new repository on GitHub**:
-   - Go to https://github.com/new
-   - Repository name: `yale-newcomer-survival-guide`
-   - **Do NOT** initialize with README, .gitignore, or license (we already have these)
+### Local Development
 
-2. **Add remote and push** (run these commands):
-   ```bash
-   git remote add origin https://github.com/she24731/yale-newcomer-survival-guide.git
-   git branch -M main
-   git push -u origin main
-   ```
+For local development, create a `.env` file in the project root (this file is gitignored):
 
-   You will be prompted to authenticate. Use your GitHub credentials or a personal access token.
+```bash
+DJANGO_SECRET_KEY=your-secret-key-here
+DEBUG=True
+DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
+DATABASE_URL=sqlite:///db.sqlite3
+GA_MEASUREMENT_ID=G-9XJWT2P5LE
+```
+
+### Production (Render)
+
+Set environment variables in the Render dashboard:
+- Go to your service → Environment
+- Add each variable with its production value
+- Render automatically provides `DATABASE_URL` for PostgreSQL services
+- `RENDER_EXTERNAL_HOSTNAME` is automatically set by Render
+
+---
 
 ## Deployment
 
-### Environments
+### Staging vs Production
 
-#### Production
+We maintain two separate environments on Render:
 
-- **URL**: https://yale-newcomer-survival-guide.onrender.com
-- **Platform**: Render Web Service
-- **Branch**: `main` (auto-deploy enabled)
-- **Database**: Render PostgreSQL via `DATABASE_URL` environment variable
-- **DEBUG**: `False` (production mode)
+- **Staging:** Used for testing changes before production deployment
+  - URL: [TBD: staging URL]
+  - Same codebase as production
+  - Separate database instance
+  - Used for QA and integration testing
 
-**Production Environment Variables** (set in Render dashboard):
+- **Production:** Live environment serving real users
+  - URL: [TBD: production URL]
+  - Stable, tested code only
+  - Production database
+  - Monitored for performance and errors
 
-| Variable | Required | Description | Example |
-|----------|----------|-------------|---------|
-| `DJANGO_SECRET_KEY` | Yes | Django secret key for security | Generate with: `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"` |
-| `DATABASE_URL` | Yes | PostgreSQL connection string | Auto-provided by Render PostgreSQL service |
-| `DEBUG` | No | Debug mode | `False` (set in render.yaml) |
-| `RENDER_EXTERNAL_HOSTNAME` | Auto | Render hostname | Auto-set by Render, added to `ALLOWED_HOSTS` |
-| `DJANGO_ADMIN_INITIAL_PASSWORD` | Optional | Initial admin password | (if using auto-admin setup) |
+### Deploying on Render
 
-**Note**: Google Analytics measurement ID uses the `GA_MEASUREMENT_ID` environment variable (default: `G-9XJWT2P5LE` for this project). The GA tag is injected in `templates/base.html` via a context processor (`core.context_processors.google_analytics`). GA IDs are not sensitive, so the default value is acceptable.
+#### Option 1: Using render.yaml (Recommended)
 
-#### Staging
+The project includes a `render.yaml` file for infrastructure-as-code deployment:
 
-- **URL**: https://`<your-staging-service>`.onrender.com *(placeholder - create a separate Render service)*
-- **Current Status**: Currently, staging and production share the same Render service. For the course, we conceptually treat this as production. A separate staging service can be added later following these steps.
+```yaml
+services:
+  - type: web
+    name: yale-newcomer-survival-guide
+    env: python
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    startCommand: gunicorn config.wsgi:application
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: yale-newcomer-db
+          property: connectionString
+```
 
-**Recommended Staging Setup** (for future):
+#### Option 2: Manual Configuration
 
-1. Create a second Render Web Service from the same GitHub repository
-2. Configure with separate environment variables:
-   - Same `DJANGO_SECRET_KEY` approach (generate a different key for staging)
-   - Point to the same `DATABASE_URL` or a separate PostgreSQL instance depending on your needs
-   - Set `DEBUG=False` for staging (or `True` for testing, then switch to `False`)
-   - Configure `RENDER_EXTERNAL_HOSTNAME` to the staging service URL
-3. Optionally configure a different branch (e.g., `develop`) for staging deployments
-4. Use staging to test deployments before promoting to production
+1. **Create a new Web Service** on Render
+2. **Connect your GitHub repository**
+3. **Configure build settings:**
+   - **Build Command:** `pip install -r requirements.txt && python manage.py collectstatic --noinput`
+   - **Start Command:** `gunicorn config.wsgi:application`
+4. **Add PostgreSQL database:**
+   - Create a new PostgreSQL database
+   - Render automatically provides `DATABASE_URL`
+5. **Set environment variables:**
+   - `DJANGO_SECRET_KEY`: Generate a secure secret key
+   - `DEBUG`: `False`
+   - `DJANGO_ALLOWED_HOSTS`: Your Render service URL
+   - `GA_MEASUREMENT_ID`: Your GA4 measurement ID (optional)
+6. **Deploy**
 
-**Note**: If a separate staging service is not created, the single service at `yale-newcomer-survival-guide.onrender.com` serves as the production deployment.
+### Post-Deployment
 
-### Deployment Procedure
+After deployment, run migrations if needed:
 
-#### Initial Setup
+```bash
+# In Render Shell or via SSH
+python manage.py migrate
+python manage.py setup_groups
+```
 
-1. **Push code to GitHub** on the `main` branch
-2. **Create Web Service on Render**:
-   - Go to https://dashboard.render.com
-   - Click "New +" → "Web Service"
-   - Connect GitHub account if not already connected
-   - Select repository: `she24731/yale-newcomer-survival-guide`
-   - Render will auto-detect `render.yaml`
+---
 
-3. **Set Environment Variables** in Render dashboard:
-   - Go to your service → "Environment" tab
-   - Add all required variables (see Production Environment Variables above)
-   - `DATABASE_URL` is automatically provided if you've linked a PostgreSQL database
+## A/B Test Endpoint
 
-4. **Create PostgreSQL Database** (if not already created):
-   - In Render dashboard, create a new PostgreSQL database
-   - Render will automatically set the `DATABASE_URL` environment variable
-   - The database connection is configured via `dj-database-url` in `config/settings.py`
+### Endpoint Details
 
-5. **Deploy**:
-   - Click "Create Web Service" or enable auto-deploy
-   - Render will:
-     - Install dependencies from `requirements.txt`
-     - Run `python manage.py collectstatic --noinput`
-     - Run `python manage.py migrate` (migrations run automatically)
-     - Start app with Gunicorn: `gunicorn config.wsgi:application --bind 0.0.0.0:$PORT`
+The A/B test endpoint is located at `/218b7ae/`, derived from the first 7 characters of SHA1("far-storm"):
 
-6. **After first deployment, set up database**:
-   - Go to Render dashboard → Your service → "Shell"
-   - Run these commands:
-     ```bash
-     python manage.py setup_groups
-     python manage.py seed_data
-     python manage.py createsuperuser
-     ```
-   - Follow prompts to create your admin user
+```python
+import hashlib
+hashlib.sha1("far-storm".encode()).hexdigest()[:7]  # Returns: "218b7ae"
+```
 
-#### Ongoing Deployments
+**Endpoint URL:** [TBD: production URL]/218b7ae/
 
-**For Production**:
-- **Option A (Auto-deploy)**: Push to `main` branch → Render automatically deploys
-- **Option B (Manual)**: In Render dashboard, click "Deploy latest commit"
+### Features
 
-**For Staging** (once created):
-- Same process, but deploy to the staging service dashboard
-- Can point to a different branch if configured
+- **Publicly Accessible:** No authentication required
+- **Team Information:** Displays team nickname "far-storm" and all team members
+- **A/B Test Button:** Button with `id="abtest"` showing either "kudos" or "thanks"
+- **Variant Assignment:** 50/50 random split, persisted via session cookie
+- **Analytics Tracking:**
+  - Server-side: `ABTestEvent` model records exposure and conversion events
+  - Client-side: GA4 events `ab_exposure` and `ab_button_click`
 
-### Migrations
+### Computing the Winner
 
-Migrations are handled automatically:
-- **Build command**: Includes `python manage.py migrate` (see `render.yaml`)
-- Migrations run on every deployment
-- No manual migration steps required after initial setup
+To analyze A/B test results and determine the winning variant:
 
-### Logs
+```bash
+python manage.py abtest_report
+```
 
-- View deployment logs in Render dashboard → Your service → "Logs" tab
-- Application logs (stdout/stderr) are available in real-time
-- Use logs to troubleshoot deployment issues
+This command:
+- Queries `ABTestEvent` for experiment "button_label_kudos_vs_thanks"
+- Calculates exposures and conversions per variant
+- Computes conversion rates
+- Identifies the winner based on higher conversion rate
+- Provides statistical warnings if sample size is insufficient
 
-### 12-Factor Configuration
+**Example Output:**
+```
+=== A/B Test Summary Report ===
+Variant          Exposures       Conversions      Conversion Rate
+kudos            50              10               20.00%
+thanks           60              18               30.00%
 
-This project follows 12-factor principles:
+Winner: "thanks" (conversion rate: 30.00% vs 20.00%)
+```
 
-- ✅ **Config via environment variables**: All sensitive settings (SECRET_KEY, DATABASE_URL, DEBUG) come from environment variables
-- ✅ **Database configured via DATABASE_URL**: Uses `dj-database_url` with SQLite fallback for local development
-- ✅ **No secrets in code**: All secrets are read from environment variables
-- ✅ **ALLOWED_HOSTS dynamically configured**: Automatically includes `RENDER_EXTERNAL_HOSTNAME`
-- ✅ **Static files via WhiteNoise**: Served automatically, no additional configuration needed
-- ✅ **Port binding**: Gunicorn binds to `$PORT` (provided by Render)
+### Analytics Integration
 
-**Local Development**: Uses SQLite and defaults to `DEBUG=True` via environment variable  
-**Production**: Uses PostgreSQL via `DATABASE_URL` and `DEBUG=False`
+- **Server-Side:** `ABTestEvent` model provides reliable, queryable data
+- **Client-Side:** GA4 Realtime dashboard for immediate monitoring
+- **Bot Filtering:** Server-side logic filters out non-human traffic
+- **Deduplication:** Session-based deduplication prevents double-counting
 
-### Important Notes
+---
 
-- **PostgreSQL Database**: Production uses Render PostgreSQL, configured via `DATABASE_URL`. The database connection string is automatically provided by Render when you link a PostgreSQL service.
-- **Static Files**: WhiteNoise serves static files automatically - no additional configuration needed.
-- **Auto-Deploy**: The `render.yaml` is configured to auto-deploy from the `main` branch.
-- **Health Check**: Configured at `/admin/login/` (see `render.yaml`)
+## Testing & Linting
 
-## URLs
+### Running Tests
 
-- `/` - Home page (category hub + latest posts + search)
-- `/c/<slug>/` - Category listing
-- `/p/<slug>/` - Post detail
-- `/submit/` - Submit new post (contributors only)
-- `/submit/<post_id>/` - Edit post (contributors only)
-- `/dashboard/` - Admin dashboard (admins only)
-- `/dashboard/approve/<post_id>/` - Approve post
-- `/dashboard/reject/<post_id>/` - Reject post
-- `/admin/` - Django admin panel
-- `/login/` - Login page
-- `/logout/` - Logout
+Run the full test suite:
 
-## Management Commands
+```bash
+python manage.py test
+```
 
-- `python manage.py setup_groups` - Create user groups
-- `python manage.py seed_data` - Seed initial data
-- `python manage.py migrate` - Run database migrations
-- `python manage.py createsuperuser` - Create admin user
-- `python manage.py collectstatic` - Collect static files (for production)
+Run tests for a specific app:
 
-## Troubleshooting
+```bash
+python manage.py test core
+```
 
-### Admin Login Issues
+Run a specific test:
 
-If you cannot log in to `/admin/`:
+```bash
+python manage.py test core.tests.test_abtest
+```
 
-1. **Verify superuser exists**:
-   ```bash
-   python manage.py createsuperuser
-   ```
+**Test Coverage:**
+- Total tests: 111+
+- Coverage: >75% overall, 100% on critical models
+- All tests passing ✅
 
-2. **Check `is_staff` flag** (in Django shell):
-   ```bash
-   python manage.py shell
-   ```
-   ```python
-   from django.contrib.auth.models import User
-   user = User.objects.get(username='admin')
-   user.is_staff = True
-   user.is_superuser = True
-   user.save()
-   ```
+### Linting
 
-### Render Deployment Issues
+Check code quality with Ruff:
 
-- **Build fails**: Check that all dependencies are in `requirements.txt`
-- **Static files not loading**: Ensure `collectstatic` runs in build command (already in render.yaml)
-- **Database errors**: Run migrations in Render Shell after first deploy
-- **500 errors**: Check Render logs and ensure `ALLOWED_HOSTS` includes your Render URL
+```bash
+ruff check .
+```
+
+Fix auto-fixable issues:
+
+```bash
+ruff check . --fix
+```
+
+**Configuration:** `pyproject.toml`
+
+**Status:** All files pass linting checks ✅
+
+---
+
+## Team Members & Contributions
+
+### stormy-deer (Chun-Hung Yeh)
+- **Primary Contributions:**
+  - Project architecture and Django setup
+  - A/B testing implementation and analytics integration
+  - Production deployment and infrastructure configuration
+  - Server-side event tracking (`ABTestEvent` model)
+  - Management commands (`abtest_report`)
+  - 12-factor app compliance and environment variable management
+  - Comprehensive test suite and coverage tooling
+
+### adorable-crow (Celine Li)
+- **Primary Contributions:**
+  - User authentication system and role management
+  - Contributor dashboard and post management workflows
+  - Public-facing UI design and Bootstrap integration
+  - Template architecture and frontend development
+  - User experience testing and validation
+  - A/B test endpoint testing and analytics verification
+
+### super-giraffe (Denise Wu)
+- **Primary Contributions:**
+  - Database models and schema design
+  - Category and post management features
+  - Admin moderation tools and workflows
+  - URL routing and view implementation
+  - A/B testing infrastructure planning
+  - Production deployment testing and QA
+
+---
+
+## Additional Resources
+
+- **Sprint Documentation:** `/docs/sprints/` (planning, review, retrospective for all 4 sprints)
+- **Final Report:** `/docs/final-report.md`
+- **Velocity Chart:** `/docs/velocity.png` (generated via `scripts/velocity_chart.py`)
+- **A/B Test Analysis:** Run `python manage.py abtest_report`
+
+---
 
 ## License
 
-This project is for educational purposes as part of the Management of Software Development course at Yale.
+[TBD: Add license information]
+
+---
+
+## Support
+
+For questions or issues, please refer to:
+- Sprint documentation in `/docs/sprints/`
+- Final project report in `/docs/final-report.md`
+- GitHub issues (if repository is public)
+
+---
+
+**Built with ❤️ by Team far-storm (stormy-deer, adorable-crow, super-giraffe)**

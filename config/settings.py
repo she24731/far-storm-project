@@ -16,27 +16,44 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY SETTINGS
 # ============================================================================
 
-SECRET_KEY = config("DJANGO_SECRET_KEY", default="django-insecure-dev-key-change-in-production")
-
-# DEBUG: prefer DJANGO_DEBUG, then DEBUG, default False
+# DEBUG: prefer DJANGO_DEBUG, then DEBUG, default False (12-Factor: env-driven)
 DEBUG = os.getenv("DJANGO_DEBUG", os.getenv("DEBUG", "False")).lower() == "true"
 
-# ALLOWED_HOSTS: use DJANGO_ALLOWED_HOSTS if provided (comma-separated), else sensible defaults
+# SECRET_KEY: Must be set via environment variable in production (12-Factor: env-driven)
+# Using decouple for local .env support, but production should use env vars directly
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY") or config("DJANGO_SECRET_KEY", default="django-insecure-dev-key-change-in-production")
+
+# Warn if using insecure default in production-like environments
+if SECRET_KEY == "django-insecure-dev-key-change-in-production" and not DEBUG:
+    import warnings
+    warnings.warn(
+        "SECRET_KEY is using insecure default. Set DJANGO_SECRET_KEY environment variable in production.",
+        UserWarning
+    )
+
+# ALLOWED_HOSTS: 12-Factor compliant - fully environment-driven
+# In production, DJANGO_ALLOWED_HOSTS must be set explicitly
+# For local development, allow localhost defaults only if DEBUG=True
 allowed_hosts_env = os.getenv("DJANGO_ALLOWED_HOSTS")
 if allowed_hosts_env:
     ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_env.split(",") if host.strip()]
-else:
+elif DEBUG:
+    # Local development: allow localhost defaults only when DEBUG=True
     ALLOWED_HOSTS = [
         "127.0.0.1",
         "localhost",
-        "yale-newcomer-survival-guide.onrender.com",
     ]
+else:
+    # Production: require explicit DJANGO_ALLOWED_HOSTS
+    # This will raise ImproperlyConfigured if not set, which is correct for 12-factor
+    ALLOWED_HOSTS = []
 
 # Render automatically provides RENDER_EXTERNAL_HOSTNAME; append it if present
 RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
 if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
+# GA_MEASUREMENT_ID: Google Analytics Measurement ID (12-Factor: env-driven)
 GA_MEASUREMENT_ID = os.getenv("GA_MEASUREMENT_ID", "G-9XJWT2P5LE")
 
 # ============================================================================
@@ -151,4 +168,45 @@ LOGOUT_REDIRECT_URL = '/'
 READER_GROUP = 'Reader'
 CONTRIBUTOR_GROUP = 'Contributor'
 ADMIN_GROUP = 'Admin'
+
+# ============================================================================
+# LOGGING (12-Factor: Logs to stdout)
+# ============================================================================
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+        'core': {
+            'handlers': ['console'],
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+    },
+}
 
