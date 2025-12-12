@@ -501,10 +501,6 @@ def abtest_view(request):
     if request.method != "GET":
         return HttpResponseNotAllowed(["GET"])
     
-    # Ignore HEAD requests entirely
-    if request.method == "HEAD":
-        return HttpResponseNotAllowed(["GET"])
-    
     experiment_name = "button_label_kudos_vs_thanks"
     endpoint = "/218b7ae/"
     session_key_variant = f"abexp:{experiment_name}:variant"
@@ -609,6 +605,9 @@ def abtest_click(request):
     # Safety check: ensure we're on the correct path (defense against URL routing bugs)
     if request.path != '/218b7ae/click/':
         raise Http404("A/B test click endpoint not found")
+    
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
     
     experiment_name = "button_label_kudos_vs_thanks"
     endpoint = "/218b7ae/"
