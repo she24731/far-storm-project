@@ -60,7 +60,7 @@ Velocity was tracked by comparing planned vs completed story points per sprint. 
 
 The following chart visualizes planned vs completed story points across all four sprints:
 
-![Sprint Velocity Chart](velocity.png)
+![Sprint Velocity Chart](docs/velocity.png)
 
 *Chart generated using `scripts/velocity_chart.py`. See `docs/final-report.md` for regeneration instructions.*
 

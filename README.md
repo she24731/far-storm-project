@@ -575,7 +575,7 @@ Shows the Kanban-style Task Board view with columns for "To Do", "In progress", 
 ## Additional Resources
 
 - **Sprint Documentation:** `/docs/sprints/` (planning, review, retrospective for all 4 sprints)
-- **Final Report:** `/docs/final-report.md` (comprehensive project documentation)
+- **Final Report:** `/FINAL_REPORT.md` (comprehensive project documentation)
 - **Velocity Chart:** `/docs/velocity.png` (generated via `scripts/velocity_chart.py`)
 - **A/B Test Analysis:** Run `python manage.py abtest_report`
 
