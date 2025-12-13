@@ -183,6 +183,16 @@ Per course policy, all team members share equal responsibility for project outco
 
 ---
 
+## Project Management & Agile Artifacts
+
+Project management, sprint planning, user stories, tasks, and spikes were tracked using GitHub Projects.
+
+The full project board (including Product Backlog, Sprint Backlog, and Task Board views) is available at:
+
+**https://github.com/users/she24731/projects/6/**
+
+---
+
 ## Conclusion
 
 The Yale Newcomer Survival Guide successfully delivers a functional MVP that addresses a real need within the Yale community. The application demonstrates solid software engineering practices: comprehensive testing, 12-factor app compliance, proper deployment procedures, and data-driven experimentation via A/B testing.
